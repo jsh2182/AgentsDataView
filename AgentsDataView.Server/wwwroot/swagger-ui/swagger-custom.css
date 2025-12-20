@@ -1,0 +1,20 @@
+﻿@import url('https://cdn.fontcdn.ir/Font/Persian/Vazir/Vazir.css');
+.swagger-ui * {
+    font-family: 'Vazir', sans-serif !important;
+}
+body, .swagger-ui, .opblock-summary, .parameter__name, .response-col_description {
+    font-family: Vazir, sans-serif !important;
+}
+
+h2, h3, h4, .opblock-tag, .info__title, td {
+    font-family: Vazir, sans-serif !important;
+    letter-spacing: 0;
+}
+
+.info__title {
+    color: #1a73e8;
+}
+
+.swagger-ui .topbar {
+    background-color: #2b2b2b;
+}

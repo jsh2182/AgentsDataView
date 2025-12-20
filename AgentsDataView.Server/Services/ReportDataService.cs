@@ -1,0 +1,419 @@
+﻿using AgentsDataView.Entities.DtoModels;
+using System.Collections;
+using AgentsDataView.Data.Contracts;
+using AgentsDataView.Entities;
+using static AgentsDataView.Entities.BaseInfoes.InvoiceTypes;
+using Microsoft.EntityFrameworkCore;
+using static AgentsDataView.Entities.BaseInfoes;
+
+namespace AgentsDataView.Services
+{
+    public class ReportDataService(IRepository<Invoice> invoiceRepo, IRepository<Company> companyRepo, IRepository<InvoiceDetail> invoiceDetailsRepo) : IReportDataService
+    {
+        private readonly IRepository<Invoice> _invoiceRepo = invoiceRepo;
+        private readonly IRepository<Company> _companyRepo = companyRepo;
+        private readonly IRepository<InvoiceDetail> _invoiceDetailsRepo = invoiceDetailsRepo;
+        private readonly InvoiceTypes[] _inputTypes =
+        [
+            AdvancedProductionReceipt,
+            SalesReturn,
+            Purchase,
+            GoodsReceipt,
+            AdvancedProductionCompletionReceipt,
+            WIPCompletionReceipt,
+            BeginingInventoryReceipt,
+            InventoryAdjustment_Increase
+        ];
+
+        private readonly InvoiceTypes[] _outputTypes =
+        [
+            Sales,
+            PurchaseReturn,
+            GoodsIssue,
+            InventoryAdjustment_Decrease
+        ];
+        public async Task<ReportResultDto[]> GetReportByProvince(int? provinceId, CancellationToken cancellationToken)
+        {
+
+
+
+            // ------------------------------
+            // کوئری کشوری
+            // ------------------------------
+            var inputCountryQuery = _invoiceDetailsRepo.QueryNoTracking
+                .Where(d =>
+                d.Invoice.InvoiceState == InvoiceStates.Approved &&
+                _inputTypes.Contains(d.Invoice.InvoiceType) &&
+                d.Invoice.Company.ProvinceId != null)
+                .GroupBy(d => new { d.Product.Code, d.Product.Name })
+                .Select(g => new ProductAggregationDto
+                {
+                    Code = g.Key.Code,
+                    Name = g.Key.Name,
+                    InputCount = g.Sum(d => d.Quantity),
+                    InputTotalPrice = g.Sum(d => d.TotalPrice),
+                    OutputCount = 0,
+                    OutputTotalPrice = 0
+                });
+
+            var outputCountryQuery = _invoiceDetailsRepo.QueryNoTracking
+                .Where(d =>
+                d.Invoice.InvoiceState == InvoiceStates.Approved &&
+                _outputTypes.Contains(d.Invoice.InvoiceType) &&
+                d.Invoice.Company.ProvinceId != null)
+                .GroupBy(d => new { d.Product.Code, d.Product.Name })
+                .Select(g => new ProductAggregationDto
+                {
+                    Code = g.Key.Code,
+                    Name = g.Key.Name,
+                    InputCount = 0,
+                    InputTotalPrice = 0,
+                    OutputCount = g.Sum(d => d.Quantity),
+                    OutputTotalPrice = g.Sum(d => d.TotalPrice)
+                });
+
+            var countryGrouped = await inputCountryQuery
+                .Concat(outputCountryQuery)
+                .GroupBy(x => new { x.Code, x.Name })
+                .Select(g => new ProductAggregationDto
+                {
+                    Code = g.Key.Code,
+                    Name = g.Key.Name,
+                    InputCount = g.Sum(x => x.InputCount),
+                    InputTotalPrice = g.Sum(x => x.InputTotalPrice),
+                    OutputCount = g.Sum(x => x.OutputCount),
+                    OutputTotalPrice = g.Sum(x => x.OutputTotalPrice)
+                })
+                .ToArrayAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            // ------------------------------
+            // کوئری استانی (در صورت وجود ProvinceId)
+            // ------------------------------
+            ProductAggregationDto[] provinceGrouped = [];
+
+            if (provinceId > 0)
+            {
+                var inputProvinceQuery = _invoiceDetailsRepo.QueryNoTracking
+                    .Where(d =>
+                    d.Invoice.InvoiceState == InvoiceStates.Approved &&
+                    d.Invoice.Company.ProvinceId == provinceId &&
+                    _inputTypes.Contains(d.Invoice.InvoiceType))
+                    .GroupBy(d => new { d.Product.Code, d.Product.Name })
+                    .Select(g => new ProductAggregationDto
+                    {
+                        Code = g.Key.Code,
+                        Name = g.Key.Name,
+                        InputCount = g.Sum(d => d.Quantity),
+                        InputTotalPrice = g.Sum(d => d.TotalPrice),
+                        OutputCount = 0,
+                        OutputTotalPrice = 0
+                    });
+
+                var outputProvinceQuery = _invoiceDetailsRepo.QueryNoTracking
+                    .Where(d =>
+                    d.Invoice.InvoiceState == InvoiceStates.Approved &&
+                    d.Invoice.Company.ProvinceId == provinceId &&
+                    _outputTypes.Contains(d.Invoice.InvoiceType))
+                    .GroupBy(d => new { d.Product.Code, d.Product.Name })
+                    .Select(g => new ProductAggregationDto
+                    {
+                        Code = g.Key.Code,
+                        Name = g.Key.Name,
+                        InputCount = 0,
+                        InputTotalPrice = 0,
+                        OutputCount = g.Sum(d => d.Quantity),
+                        OutputTotalPrice = g.Sum(d => d.TotalPrice)
+                    });
+
+                provinceGrouped = await inputProvinceQuery
+                    .Concat(outputProvinceQuery)
+                    .GroupBy(x => new { x.Code, x.Name })
+                    .Select(g => new ProductAggregationDto
+                    {
+                        Code = g.Key.Code,
+                        Name = g.Key.Name,
+                        InputCount = g.Sum(x => x.InputCount),
+                        InputTotalPrice = g.Sum(x => x.InputTotalPrice),
+                        OutputCount = g.Sum(x => x.OutputCount),
+                        OutputTotalPrice = g.Sum(x => x.OutputTotalPrice)
+                    })
+                    .ToArrayAsync(cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            // ------------------------------
+            // JOIN کشوری + استانی
+            // ------------------------------
+            var result =
+                from c in countryGrouped
+                join p in provinceGrouped
+                    on new { c.Code, c.Name } equals new { p.Code, p.Name }
+                    into gp
+                from province in gp.DefaultIfEmpty()
+                select new ReportResultDto
+                {
+                    ProductCode = c.Code,
+                    ProductName = c.Name,
+
+                    CountryInputCount = Math.Round(c.InputCount),
+                    CountryInputTotal = Math.Round(c.InputTotalPrice),
+                    CountryOutputCount = Math.Round(c.OutputCount),
+                    CountryOutputTotal = Math.Round(c.OutputTotalPrice),
+
+                    ProvinceInputCount = Math.Round(province?.InputCount ?? 0),
+                    ProvinceInputTotal = Math.Round(province?.InputTotalPrice ?? 0),
+                    ProvinceOutputCount = Math.Round(province?.OutputCount ?? 0),
+                    ProvinceOutputTotal = Math.Round(province?.OutputTotalPrice ?? 0)
+                };
+
+            return [.. result.OrderBy(p => p.ProductName)];
+        }
+
+        public async Task<IEnumerable> GetReportByProvince_Cumulative(CancellationToken cancellationToken)
+        {
+            var inputQuery = _invoiceDetailsRepo.QueryNoTracking
+                .Where(d =>
+                d.Invoice.InvoiceState == InvoiceStates.Approved &&
+                _inputTypes.Contains(d.Invoice.InvoiceType) && d.Invoice.Company.ProvinceId != null)
+                .GroupBy(d => d.Invoice.Company.Province.ProvinceName)
+                .Select(g => new ReportResultDto
+                {
+                    ProvinceName = g.Key,
+                    ProvinceInputCount = g.Sum(d => d.Quantity),
+                    ProvinceInputTotal = g.Sum(d => d.TotalPrice),
+                    ProvinceOutputCount = 0,
+                    ProvinceOutputTotal = 0
+                });
+
+            var outputQuery = _invoiceDetailsRepo.QueryNoTracking
+                .Where(d =>
+                d.Invoice.InvoiceState == InvoiceStates.Approved &&
+                _outputTypes.Contains(d.Invoice.InvoiceType) && d.Invoice.Company.ProvinceId != null)
+                .GroupBy(d => d.Invoice.Company.Province.ProvinceName)
+                .Select(g => new ReportResultDto
+                {
+                    ProvinceName = g.Key,
+                    ProvinceInputCount = 0,
+                    ProvinceInputTotal = 0,
+                    ProvinceOutputCount = g.Sum(d => d.Quantity),
+                    ProvinceOutputTotal = g.Sum(d => d.TotalPrice)
+                });
+
+            ReportResultDto[]? result = await inputQuery
+                .Concat(outputQuery)
+                .GroupBy(x => x.ProvinceName)
+                .Select(g => new ReportResultDto
+                {
+                    ProvinceName = g.Key,
+                    ProvinceInputCount = Math.Round(g.Sum(x => x.ProvinceInputCount)),
+                    ProvinceInputTotal = Math.Round(g.Sum(x => x.ProvinceInputTotal)),
+                    ProvinceOutputCount = Math.Round(g.Sum(x => x.ProvinceOutputCount)),
+                    ProvinceOutputTotal = Math.Round(g.Sum(x => x.ProvinceOutputTotal))
+                })
+                .OrderBy(g => g.ProvinceName)
+                .ToArrayAsync(cancellationToken)
+                .ConfigureAwait(false);
+            return result;
+        }
+
+        public async Task<IEnumerable> GetReportByCompanyAndProduct(int? provinceId, CancellationToken cancellationToken)
+        {
+
+
+
+            // -----------------------------
+            // Input Query
+            // -----------------------------
+            var inputQuery = _invoiceDetailsRepo.QueryNoTracking
+                .Where(d => d.Invoice.InvoiceState == InvoiceStates.Approved &&
+                            _inputTypes.Contains(d.Invoice.InvoiceType) &&
+                            d.Invoice.Company.ProvinceId != null &&
+                            (!provinceId.HasValue || d.Invoice.Company.ProvinceId == provinceId))
+                .GroupBy(d => new
+                {
+                    CompanyName = d.Invoice.Company.Name,
+                    d.Product.Code,
+                    d.Product.Name
+                })
+                .Select(g => new ProductAggregationDto
+                {
+                    CompanyName = g.Key.CompanyName,
+                    Code = g.Key.Code,
+                    Name = g.Key.Name,
+                    InputCount = g.Sum(d => d.Quantity),
+                    InputTotalPrice = g.Sum(d => d.TotalPrice),
+                    OutputCount = 0,
+                    OutputTotalPrice = 0
+                });
+
+            // -----------------------------
+            // Output Query
+            // -----------------------------
+            var outputQuery = _invoiceDetailsRepo.QueryNoTracking
+                .Where(d => d.Invoice.InvoiceState == InvoiceStates.Approved &&
+                            _outputTypes.Contains(d.Invoice.InvoiceType) &&
+                            d.Invoice.Company.ProvinceId != null &&
+                            (!provinceId.HasValue || d.Invoice.Company.ProvinceId == provinceId))
+                .GroupBy(d => new
+                {
+                    CompanyName = d.Invoice.Company.Name,
+                    d.Product.Code,
+                    d.Product.Name
+                })
+                .Select(g => new ProductAggregationDto
+                {
+                    CompanyName = g.Key.CompanyName,
+                    Code = g.Key.Code,
+                    Name = g.Key.Name,
+                    InputCount = 0,
+                    InputTotalPrice = 0,
+                    OutputCount = g.Sum(d => d.Quantity),
+                    OutputTotalPrice = g.Sum(d => d.TotalPrice)
+                });
+
+            // -----------------------------
+            // ترکیب Input و Output و GroupBy نهایی
+            // -----------------------------
+            var combinedQuery = inputQuery
+                .Concat(outputQuery)
+                .GroupBy(x => new { x.CompanyName, x.Code, x.Name })
+                .Select(g => new ProductAggregationDto
+                {
+                    CompanyName = g.Key.CompanyName,
+                    Code = g.Key.Code,
+                    Name = g.Key.Name,
+                    InputCount = g.Sum(x => x.InputCount),
+                    InputTotalPrice = g.Sum(x => x.InputTotalPrice),
+                    OutputCount = g.Sum(x => x.OutputCount),
+                    OutputTotalPrice = g.Sum(x => x.OutputTotalPrice)
+                });
+
+            // -----------------------------
+            // GroupBy دوم: هر شرکت + آرایه محصولات
+            // -----------------------------
+            var firstResult = await combinedQuery.ToArrayAsync(cancellationToken).ConfigureAwait(false);
+            var result = firstResult
+                .GroupBy(x => new { x.CompanyName })
+                .Select(g => new
+                {
+                    g.Key.CompanyName,
+                    Products = g.Select(p => new
+                    {
+                        ProductCode = p.Code,
+                        ProductName = p.Name,
+                        InputCount = Math.Round(p.InputCount),
+                        InputTotalPrice = Math.Round(p.InputTotalPrice),
+                        OutputCount = Math.Round(p.OutputCount),
+                        OutputTotalPrice = Math.Round(p.OutputTotalPrice)
+                    }).ToArray()
+                })
+                .OrderBy(g => g.CompanyName)
+                .ToArray();
+
+            return result;
+        }
+
+
+        public async Task<ReportResultDto[]> GetProfitReportByCompany(int? provinceId, CancellationToken cancellationToken)
+        {
+            var result = await _invoiceDetailsRepo.QueryNoTracking
+                .Where(d => d.Invoice.InvoiceType == Sales &&
+                d.Invoice.InvoiceState == InvoiceStates.Approved &&
+                d.Invoice.Company.ProvinceId != null &&
+                (!provinceId.HasValue || d.Invoice.Company.ProvinceId == provinceId))
+                .GroupBy(d => new { CompanyCode = d.Invoice.Company.Code, CompanyName = d.Invoice.Company.Name, d.Invoice.CompanyId })
+                .Select(g => new ReportResultDto
+                {
+                    CompanyCode = g.Key.CompanyCode,
+                    CompanyName = g.Key.CompanyName,
+                    CompanyId = g.Key.CompanyId,
+                    CompanyOutputCount = Math.Round(g.Sum(x => x.Quantity)),
+                    CompanyOutputTotal = Math.Round(g.Sum(x => x.TotalPrice)),
+                    CostOfGoodsSold = Math.Round(g.Sum(x => x.Quantity * x.CostOfGoodsSold)),
+                    ProfitLoss = Math.Round(g.Sum(x => x.TotalPrice - x.Quantity * x.CostOfGoodsSold))
+                }).OrderBy(r => r.CompanyCode).ToArrayAsync(cancellationToken).ConfigureAwait(false);
+            var invoiceDiscounts = await _invoiceRepo.QueryNoTracking
+                  .Where(i => i.InvoiceType == Sales &&
+                  i.InvoiceState == InvoiceStates.Approved &&
+                  i.Company.ProvinceId != null &&
+                  (!provinceId.HasValue || i.Company.ProvinceId == provinceId))
+                  .GroupBy(i => i.CompanyId)
+                  .Select(g => new
+                  {
+                      CompanyId = g.Key,
+                      Discount = g.Sum(gg => gg.DiscountValue)
+                  }).ToDictionaryAsync(i => i.CompanyId, i => i.Discount, cancellationToken).ConfigureAwait(false);
+            foreach (var item in result)
+            {
+                invoiceDiscounts.TryGetValue(item.CompanyId, out decimal discount);
+                item.ProfitLoss -= discount;
+            }
+            return result;
+        }
+        public async Task<ReportResultDto[]?> GetProfitReportByProvince(CancellationToken cancellationToken)
+        {
+            // Query کشوری
+            var countryQuery = _invoiceDetailsRepo.QueryNoTracking
+                .Where(d =>
+                d.Invoice.InvoiceState == InvoiceStates.Approved &&
+                d.Invoice.InvoiceType == Sales &&
+                d.Invoice.Company.ProvinceId != null)
+                .GroupBy(d => 1)
+                .Select(g => new ReportResultDto
+                {
+                    ProvinceId = 0,
+                    ProvinceName = "تجمیع کشوری",
+                    ProvinceOutputCount = Math.Round(g.Sum(x => x.Quantity)),
+                    ProvinceOutputTotal = Math.Round(g.Sum(x => x.TotalPrice)),
+                    CostOfGoodsSold = Math.Round(g.Sum(x => x.Quantity * x.CostOfGoodsSold)),
+                    ProfitLoss = Math.Round(g.Sum(x => x.TotalPrice - x.Quantity * x.CostOfGoodsSold))
+                });
+
+            // Query استانی
+            var provinceQuery = _invoiceDetailsRepo.QueryNoTracking
+                .Where(d =>
+                d.Invoice.InvoiceState == InvoiceStates.Approved &&
+                d.Invoice.InvoiceType == Sales &&
+                d.Invoice.Company.ProvinceId != null)
+                .GroupBy(d => new { d.Invoice.Company.Province.ProvinceName, d.Invoice.Company.ProvinceId })
+                .Select(g => new ReportResultDto
+                {
+                    ProvinceId = g.Key.ProvinceId,
+                    ProvinceName = g.Key.ProvinceName,
+                    ProvinceOutputCount = Math.Round(g.Sum(x => x.Quantity)),
+                    ProvinceOutputTotal = Math.Round(g.Sum(x => x.TotalPrice)),
+                    CostOfGoodsSold = Math.Round(g.Sum(x => x.Quantity * x.CostOfGoodsSold)),
+                    ProfitLoss = Math.Round(g.Sum(x => x.TotalPrice - x.Quantity * x.CostOfGoodsSold))
+                });
+
+            // ترکیب دو query و اجرای نهایی
+            var result = await countryQuery
+                .Concat(provinceQuery)
+                .OrderBy(d => d.ProvinceName == "تجمیع کشوری" ? "" : d.ProvinceName)
+                .ToArrayAsync(cancellationToken)
+                .ConfigureAwait(false);
+            var invoiceDiscounts = await _invoiceRepo.QueryNoTracking
+                .Where(i =>
+                i.InvoiceState == InvoiceStates.Approved &&
+                i.InvoiceType == Sales &&
+                i.Company.ProvinceId != null)
+                .GroupBy(g => g.Company.ProvinceId.Value)
+                .Select(g => new
+                {
+                    ProvinceId = g.Key,          
+                    Discount = g.Sum(gg => gg.DiscountValue)
+                }).ToDictionaryAsync(i => i.ProvinceId, i => i.Discount, cancellationToken).ConfigureAwait(false);
+
+            foreach (var item in result)
+            {
+                invoiceDiscounts.TryGetValue(item.ProvinceId.Value, out decimal discount);
+                item.ProfitLoss -= discount;
+            }
+            return result;
+        }
+
+
+
+    }
+}
