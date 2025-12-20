@@ -118,7 +118,7 @@ namespace AgentsDataView.Entities
         public long InvoiceId { get; set; }
         public int ProductId { get; set; }
 
-        [Range(1, 1_000_000, ErrorMessage ="تعداد باید عددی بین 1 و 1,000,000 باشد.")]
+        [Range(1, 100_000_000, ErrorMessage ="تعداد باید عددی بین 1 و 100,000,000 باشد.")]
         public decimal Quantity { get; set; } = 1;
 
         [Range(0, 100_000_000_000, ErrorMessage = "بهای واحد باید عددی بین 0 و 100,000,000,000 باشد.")]

@@ -12,7 +12,7 @@ namespace AgentsDataView.Entities
             builder.Property(s => s.Id).ValueGeneratedOnAdd();
             builder.Property(s => s.LoginInfo).HasMaxLength(1000);
             builder.Property(s => s.Password).HasMaxLength(100).IsRequired();
-            builder.Property(s => s.UserFullName).HasMaxLength(50).IsRequired();
+            builder.Property(s => s.UserFullName).HasMaxLength(350).IsRequired();
             builder.Property(s => s.UserMobile).HasMaxLength(11);
             builder.Property(s => s.UserName).HasMaxLength(50);
             builder.Property(s => s.IsActive);

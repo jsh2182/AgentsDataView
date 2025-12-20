@@ -322,7 +322,7 @@ namespace AgentsDataView.Services
                 d.Invoice.InvoiceState == InvoiceStates.Approved &&
                 d.Invoice.Company.ProvinceId != null &&
                 (!provinceId.HasValue || d.Invoice.Company.ProvinceId == provinceId))
-                .GroupBy(d => new { CompanyCode = d.Invoice.Company.Code, CompanyName = d.Invoice.Company.Name, d.Invoice.CompanyId })
+                .GroupBy(d => new {CompanyCode = d.Invoice.Company.Code, CompanyName = d.Invoice.Company.Name, d.Invoice.CompanyId })
                 .Select(g => new ReportResultDto
                 {
                     CompanyCode = g.Key.CompanyCode,

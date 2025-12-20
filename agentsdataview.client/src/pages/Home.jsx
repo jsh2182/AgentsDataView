@@ -136,7 +136,7 @@ export default function Home() {
       <div className="custom-tooltip" style={{ visibility: isVisible ? 'visible' : 'hidden' }}>
         {isVisible && (
           <p style={{ backgroundColor: "black", color: "whitesmoke", fontSize: "0.8em", borderRadius: "5px", padding: "8px" }}>
-            {`${label}: ${Intl.NumberFormat().format(payload[0].value)}`}</p>
+            {`${payload[0]?.payload?.provinceName}: ${Intl.NumberFormat().format(payload[0].value)}`}</p>
 
         )}
       </div>
@@ -283,7 +283,7 @@ export default function Home() {
                   }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="provinceName" reversed fontSize={13} />
+                  <XAxis dataKey="provinceId" reversed fontSize={13} />
                   <YAxis width="auto" orientation="right" angle={35} style={{ direction: "ltr" }} fontSize={12} tickFormatter={value => value?.toLocaleString("fa-IR")} />
                   <Tooltip content={CustomTooltip} />
                   <Bar dataKey="profitLoss" fill="#496ab6ff" activeBar={<Rectangle fill="#7a88a7ff" stroke="blue" />} />
@@ -309,7 +309,6 @@ export default function Home() {
                 <thead>
                   <tr>
                     <th>ردیف</th>
-                    <th>کد شرکت</th>
                     <th>نام شرکت</th>
                     <th>فروش</th>
                     <th>بهای تمام شده</th>
@@ -336,7 +335,6 @@ export default function Home() {
                     profitReportByCompany.map((data, i) =>
                       <tr key={i} className="result-table-row">
                         <td>{i+1}</td>
-                        <td>{data.companyCode}</td>
                         <td>{data.companyName}</td>
                         <td>{data.companyOutputTotal?.toLocaleString("fa-IR")}</td>
                         <td>{data.costOfGoodsSold?.toLocaleString("fa-IR")}</td>

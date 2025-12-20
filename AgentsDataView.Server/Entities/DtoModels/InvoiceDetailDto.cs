@@ -10,7 +10,7 @@ namespace AgentsDataView.Entities.DtoModels
         public string ProductName { get; set; } = "";
         public string ProductModel { get; set; } = "";
 
-        [Range(1, 1_000_000, ErrorMessage = "تعداد باید عددی بین 1 و 1,000,000 باشد.")]
+        [Range(1, 100_000_000, ErrorMessage = "تعداد باید عددی بین 1 و 100,000,000 باشد.")]
         public decimal Quantity { get; set; } = 1;
 
         [Range(0, 100_000_000_000, ErrorMessage = "بهای واحد باید عددی بین 0 و 100,000,000,000 باشد.")]
@@ -20,7 +20,7 @@ namespace AgentsDataView.Entities.DtoModels
         [Range(0, 100, ErrorMessage = "درصد ارزش افزوده باید عددی بین 0 و 100 باشد.")]
         public decimal TaxPercent { get; set; }
        
-        [Range(0, 9_9999_999_999_999.9999, ErrorMessage = "مبلغ ارزش افزوده باید عددی بین 0 و 9,9999,999,999,999.9999 باشد.")]
+        [Range(0, 9_999_9999_999_999.9999, ErrorMessage = "مبلغ ارزش افزوده باید عددی بین 0 و 9,9999,999,999,999.9999 باشد.")]
         public decimal TaxValue { get; set; }
 
         [Range(0, 100, ErrorMessage = "درصد تخفیف باید عددی بین 0 و 100 باشد.")]

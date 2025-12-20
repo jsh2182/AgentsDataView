@@ -4,6 +4,7 @@ using AgentsDataView.Entities;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
+using Microsoft.EntityFrameworkCore.Storage;
 using System.Data.Common;
 using System.Linq.Expressions;
 
@@ -22,6 +23,7 @@ namespace AgentsDataView.Data.Repositories
             Entities = DbContext.Set<TEntity>();
             DbConnection = DbContext.Database.GetDbConnection();
         }
+
 
         #region Async Methods
         public virtual ValueTask<TEntity?> GetByIdAsync(CancellationToken cancellationToken, params object?[]? ids)
@@ -97,6 +99,12 @@ namespace AgentsDataView.Data.Repositories
             {
                 await DbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             }
+        }
+
+        public virtual async Task<IDbContextTransaction> BeginTransaction(CancellationToken cancellationToken)
+        {
+            var transaction = await DbContext.Database.BeginTransactionAsync(cancellationToken);
+            return transaction;
         }
 
 

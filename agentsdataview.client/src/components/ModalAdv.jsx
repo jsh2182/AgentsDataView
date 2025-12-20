@@ -21,7 +21,7 @@ export default function ModalAdv() {
         }
     }, [showAdv])
     return (
-        <Modal size="lg" show={showAdv} onHide={showCloseButton ? handleClose : undefined} backdrop={true} centered style={{ backdropFilter: "blur(5px)" }}>
+        <Modal size="lg" show={showAdv} dialogClassName="custom-modal" animation={false} onHide={showCloseButton ? handleClose : undefined} backdrop={true} centered style={{ backdropFilter: "blur(5px)" }}>
             {/* <Modal.Header className="header-style" closeButton={showCloseButton}>
 
             </Modal.Header> */}

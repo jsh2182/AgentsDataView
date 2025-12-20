@@ -67,9 +67,9 @@ export default defineConfig({
             registerType: "autoUpdate",
             includeAssets: ["favicon.svg", "robots.txt", "apple-touch-icon.png"],
             manifest: {
-                name: "AgentsDataView",
-                short_name: "AgentsDataView",
-                description: "AgentsDataView Progressive Web App",
+                name: "TIP Dashboard",
+                short_name: "TIP Dashboard",
+                description: "TIP Dashboard Progressive Web App",
                 theme_color: "#ffffff",
                 icons: [
                     {

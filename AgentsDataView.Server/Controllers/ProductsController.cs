@@ -127,10 +127,10 @@ namespace AgentsDataView.Server.Controllers
                 {
                     return BadRequest("کالای دیگری با این کد در سیستم وجود دارد.");
                 }
-                if (existing.Name == model.Name && existing.Model == model.Model)
-                {
-                    return BadRequest("کالای دیگری با این نام و مدل در سیستم وجود دارد.");
-                }
+                //if (existing.Name == model.Name && existing.Model == model.Model)
+                //{
+                //    return BadRequest($"کالای دیگری با این نام و مدل در سیستم وجود دارد.کد کالا: ${existing.Code}");
+                //}
             }
             var newProduct = new Product()
             {

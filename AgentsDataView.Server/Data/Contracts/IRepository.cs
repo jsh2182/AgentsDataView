@@ -1,6 +1,7 @@
 ﻿using AgentsDataView.Entities;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using System.Data.Common;
 
 namespace AgentsDataView.Data.Contracts
@@ -13,6 +14,7 @@ namespace AgentsDataView.Data.Contracts
         public DbConnection DbConnection { get; }
         Task AddAsync(TEntity entity, CancellationToken cancellationToken, bool saveNow = true);
         Task AddRangeAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken, bool saveNow = true);
+        Task<IDbContextTransaction> BeginTransaction(CancellationToken cancellationToken);
         Task BulkInsertAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken);
         Task BulkInsertAsync(IEnumerable<TEntity> entities, SqlTransaction transaction, CancellationToken cancellationToken);
         Task BulkInsertWithOutputIdsAsync(IList<TEntity> entities, CancellationToken cancellationToken, SqlTransaction? transaction = null);

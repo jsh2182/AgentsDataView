@@ -11,7 +11,7 @@ namespace AgentsDataView.Entities
             builder.ToTable("InvoiceDetails", "dbo");
             builder.HasKey(d => d.Id);
             builder.Property(d => d.Id).ValueGeneratedOnAdd();
-            builder.Property(d => d.DetailDescription).HasMaxLength(300);
+            builder.Property(d => d.DetailDescription).HasMaxLength(500);
             builder.Property(d => d.Quantity).HasPrecision(14, 2);
             builder.Property(d=>d.UnitPrice).HasPrecision(18, 4);
             builder.Property(d => d.TotalPrice).HasPrecision(22,4).HasComputedColumnSql("[Quantity] * [UnitPrice]", true);

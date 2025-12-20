@@ -156,31 +156,50 @@ namespace AgentsDataView.Server.Controllers
                 ProvinceId = model.ProvinceId,
                 RegistrationNumber = model.RegistrationNumber
             };
-            await _companyRepo.AddAsync(newComp, cancellationToken).ConfigureAwait(false);
-            var newFp = new FinancialPeriod()
+            await using var transaction = await _companyRepo.BeginTransaction(cancellationToken);
+
+            try
             {
-                Id = 0,
-                CompanyId = newComp.Id,
-                Title = $"دوره مالی شرکت {newComp.Name}",
-                StartDate = DateTimeOffset.UtcNow
-            };
-            await _fpRepo.AddAsync(newFp, cancellationToken, false).ConfigureAwait(false);
-            var compUser = new SystemUser()
+                await _companyRepo.AddAsync(newComp, cancellationToken, true);
+
+                // 2️⃣ افزودن دوره مالی بدون SaveChangesAsync (saveNow = false)
+                var newFp = new FinancialPeriod
+                {
+                    Id=0,
+                    CompanyId = newComp.Id,
+                    Title = $"دوره مالی شرکت {newComp.Name}",
+                    StartDate = DateTimeOffset.UtcNow
+                };
+                await _fpRepo.AddAsync(newFp, cancellationToken, false);
+
+                // 3️⃣ افزودن کاربر شرکت و SaveChangesAsync همان لحظه (saveNow = true)
+                var compUser = new SystemUser
+                {
+                    Id=0,
+                    CompanyId = newComp.Id,
+                    IsActive = true,
+                    Password = "Comp_" + newComp.Id,
+                    UserFullName = $"کاربر شرکت {newComp.Name}",
+                    UserName = "Comp_" + newComp.Id
+                };
+                await _userRepo.AddAsync(compUser, cancellationToken); // اینجا SaveChangesAsync زده میشه
+
+                // ✅ commit تراکنش
+                await transaction.CommitAsync(cancellationToken);
+
+                return Ok(new CreateCompanyResult
+                {
+                    CompanyId = newComp.Id,
+                    FinancialPeriodId = newFp.Id,
+                    UserName = compUser.UserName
+                });
+            }
+            catch
             {
-                Id = 0,
-                CompanyId = newComp.Id,
-                IsActive = true,
-                Password = "Comp_" + newComp.Id,
-                UserFullName = "کاربر شرکت " + newComp.Name,
-                UserName = "Comp_" + newComp.Id
-            };
-            await _userRepo.AddAsync(compUser, cancellationToken).ConfigureAwait(false);
-            return Ok(new CreateCompanyResult()
-            {
-                CompanyId = newComp.Id,
-                FinancialPeriodId = newFp.Id,
-                UserName = compUser.UserName,
-            });
+                // rollback اگر خطایی رخ بده
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
         }
 
         [HttpPut("[action]")]
