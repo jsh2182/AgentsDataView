@@ -55,7 +55,7 @@ const AdminPanel = () => {
         { colTitle: "استان", colName: "provinceName" },
         { colTitle: "شهر", colName: "cityName" },
         { colTitle: "نشانی", colName: "address", colType:"string" },
-        { colTitle: "تاریخ ثبت اطلاعات", colName: "pMaxInvoiceCreationDate" },
+        { colTitle: "تاریخ آخرین ارسال", colName: "pMaxInvoiceCreationDate" },
         { colTitle: "آخرین تاریخ فاکتور", colName: "pMaxInvoiceDate" }
     ]
     const showCompany = (row) => {

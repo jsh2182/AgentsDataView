@@ -1,4 +1,5 @@
-﻿namespace AgentsDataView.Entities.DtoModels
+﻿using AgentsDataView.Common.Utilities;
+namespace AgentsDataView.Entities.DtoModels
 {
     public class ReportResultDto
     {
@@ -72,5 +73,10 @@
         public decimal ProfitLoss { get; internal set; }
         public int? ProvinceId { get; internal set; }
         public string CompanyCode { get; internal set; }
+        public decimal ProfitLossPercent { get; internal set; }
+        public DateTimeOffset? CompanyMaxInvoiceCreationDate { get; internal set; }
+        public string PCompanyMaxInvoiceCreationDate => CompanyMaxInvoiceCreationDate.HasValue ? CompanyMaxInvoiceCreationDate.Value.ToLocalTime().Date.ToPersian():"";
+        public DateTimeOffset? CompanyMaxInvoiceDate { get; internal set; }
+        public string PCompanyMaxInvoiceDate => CompanyMaxInvoiceDate.HasValue ? CompanyMaxInvoiceDate.Value.ToLocalTime().Date.ToPersian():"";
     }
 }

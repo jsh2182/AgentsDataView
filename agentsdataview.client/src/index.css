@@ -78,7 +78,8 @@ body {
 
 .result-table-row:hover td {
   background-color: rgb(123, 128, 168) !important;
-  color: white;
+  color: white !important;
+
 }
 
 .result-table-row:hover div[comma-value] {

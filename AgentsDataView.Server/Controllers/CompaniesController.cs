@@ -85,10 +85,10 @@ namespace AgentsDataView.Server.Controllers
                 RegistrationNumber = comp.RegistrationNumber,
             }).ToArray();
 
-            var invList = await _invoiceService.GetMaxInvoiceDates(cancellationToken);
+            var invDict = await _invoiceService.GetMaxInvoiceDates(cancellationToken);
             foreach(var c in result)
             {
-                invList.TryGetValue(c.Id.Value, out var inv);
+                invDict.TryGetValue(c.Id.Value, out var inv);
                 c.MaxInvoiceCreationDate = inv.MaxCreationDate;
                 c.MaxInvoiceDate = inv.MaxInvoiceDate;
             }

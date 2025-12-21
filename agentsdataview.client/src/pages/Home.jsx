@@ -214,6 +214,7 @@ export default function Home() {
                     <th>فروش</th>
                     <th>بهای تمام شده</th>
                     <th>سود/زیان</th>
+                    <th>درصد سود/زیان</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -225,11 +226,12 @@ export default function Home() {
                         <td>{data.provinceName}</td>
                         <td>{data.provinceOutputTotal?.toLocaleString("fa-IR")}</td>
                         <td>{data.costOfGoodsSold?.toLocaleString("fa-IR")}</td>
-                        <td>{data.profitLoss?.toLocaleString("fa-IR")}</td>
+                        <td style={{ color: Number(data.profitLoss) < 0 ? "red" : Number(data.profitLoss) > 0 ? "green" : "unset" }}>{Math.abs(data.profitLoss ?? 0).toLocaleString("fa-IR")}</td>
+                        <td style={{ color: Number(data.profitLossPercent) < 0 ? "red" : Number(data.profitLossPercent) > 0 ? "green" : "unset" }}>{Math.abs(data.profitLossPercent ?? 0)}</td>
                       </tr>
 
                     ) :
-                    <tr><td colSpan={6} className="text-center">داده ای برای نمایش وجود ندارد</td></tr>
+                    <tr><td colSpan={7} className="text-center">داده ای برای نمایش وجود ندارد</td></tr>
                   }
                 </tbody>
               </Table>
@@ -255,11 +257,12 @@ export default function Home() {
             <IranMap dataList={profitReportByProvince}
               tooltips={[{ title: "فروش", name: "provinceOutputTotal", isPrice: true },
               { title: "بهای تمام شده", name: "costOfGoodsSold", isPrice: true },
-              { title: "سود/زیان", name: "profitLoss", isPrice: true }
+              { title: "سود/زیان", name: "profitLoss", isPrice: true },
+              { title: "درصد سود/زیان", name: "profitLossPercent" }
               ]}
             />
           </Col>
-          }
+        }
       </Row>
       <Row>
         <Col md={6} className="mb-1 mt-1">
@@ -313,12 +316,15 @@ export default function Home() {
                     <th>فروش</th>
                     <th>بهای تمام شده</th>
                     <th>سود (زیان)</th>
+                    <th>درصد سود/زیان</th>
+                    <th>آخرین تاریخ فاکتور</th>
+                    <th>تاریخ آخرین ارسال</th>
                   </tr>
                 </thead>
                 <tbody>
                   {profitReportByCompanyLoading &&
                     <tr>
-                      <td colSpan={6} className="p-1">
+                      <td colSpan={8} className="p-1">
                         <div
                           style={{
                             display: "flex",
@@ -334,11 +340,14 @@ export default function Home() {
                   {!profitReportByCompanyLoading && Array.isArray(profitReportByCompany) && profitReportByCompany.length > 0 ?
                     profitReportByCompany.map((data, i) =>
                       <tr key={i} className="result-table-row">
-                        <td>{i+1}</td>
+                        <td>{i + 1}</td>
                         <td>{data.companyName}</td>
                         <td>{data.companyOutputTotal?.toLocaleString("fa-IR")}</td>
                         <td>{data.costOfGoodsSold?.toLocaleString("fa-IR")}</td>
-                        <td>{data.profitLoss?.toLocaleString("fa-IR")}</td>
+                        <td style={{ color: Number(data.profitLoss) < 0 ? "red" : Number(data.profitLoss) > 0 ? "green" : "unset" }}>{Math.abs(data.profitLoss ?? 0).toLocaleString("fa-IR")}</td>
+                        <td style={{ color: Number(data.profitLossPercent) < 0 ? "red" : Number(data.profitLossPercent) > 0 ? "green" : "unset" }}>{Math.abs(data.profitLossPercent ?? 0)}</td>
+                        <td>{data.pCompanyMaxInvoiceDate}</td>
+                        <td>{data.pCompanyMaxInvoiceCreationDate}</td>
                       </tr>) :
 
                     <tr>{!profitReportByCompanyLoading &&

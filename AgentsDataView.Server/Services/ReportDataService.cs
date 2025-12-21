@@ -8,11 +8,15 @@ using static AgentsDataView.Entities.BaseInfoes;
 
 namespace AgentsDataView.Services
 {
-    public class ReportDataService(IRepository<Invoice> invoiceRepo, IRepository<Company> companyRepo, IRepository<InvoiceDetail> invoiceDetailsRepo) : IReportDataService
+    public class ReportDataService(IRepository<Invoice> invoiceRepo, 
+        IRepository<Company> companyRepo, 
+        IRepository<InvoiceDetail> invoiceDetailsRepo,
+        IInvoiceService invoiceService) : IReportDataService
     {
         private readonly IRepository<Invoice> _invoiceRepo = invoiceRepo;
         private readonly IRepository<Company> _companyRepo = companyRepo;
         private readonly IRepository<InvoiceDetail> _invoiceDetailsRepo = invoiceDetailsRepo;
+        private readonly IInvoiceService _invoiceService = invoiceService;
         private readonly InvoiceTypes[] _inputTypes =
         [
             AdvancedProductionReceipt,
@@ -344,10 +348,18 @@ namespace AgentsDataView.Services
                       CompanyId = g.Key,
                       Discount = g.Sum(gg => gg.DiscountValue)
                   }).ToDictionaryAsync(i => i.CompanyId, i => i.Discount, cancellationToken).ConfigureAwait(false);
+            var invDict = await _invoiceService.GetMaxInvoiceDates(cancellationToken);
+            foreach (var c in result)
+            {
+                invDict.TryGetValue(c.CompanyId, out var inv);
+                c.CompanyMaxInvoiceCreationDate = inv.MaxCreationDate;
+                c.CompanyMaxInvoiceDate = inv.MaxInvoiceDate;
+            }
             foreach (var item in result)
             {
                 invoiceDiscounts.TryGetValue(item.CompanyId, out decimal discount);
                 item.ProfitLoss -= discount;
+                item.ProfitLossPercent = Math.Round( (item.ProfitLoss / item.CompanyOutputTotal) * 100,2);
             }
             return result;
         }
@@ -409,6 +421,7 @@ namespace AgentsDataView.Services
             {
                 invoiceDiscounts.TryGetValue(item.ProvinceId.Value, out decimal discount);
                 item.ProfitLoss -= discount;
+                item.ProfitLossPercent = Math.Round((item.ProfitLoss / item.ProvinceOutputTotal) * 100, 2);
             }
             return result;
         }
