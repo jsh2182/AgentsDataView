@@ -68,6 +68,7 @@ namespace AgentsDataView.Server.Controllers
             var array = await _companyRepo.QueryNoTracking
                 .Include(c => c.Province)
                 .Include(c => c.City)
+                .OrderBy(c=>c.Code)
                 .ToArrayAsync(cancellationToken)
                 .ConfigureAwait(false);
             var result = array.Select(comp => new CompaniesDto()

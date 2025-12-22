@@ -119,7 +119,7 @@ namespace IranSAS.Server.Controllers
             return Ok();
         }
         [HttpPut("[action]")]
-        public async Task<ActionResult> UpdateMe([FromBody] UserDto model, CancellationToken cancellationToken)
+        public async Task<ActionResult> UpdateMe([FromBody] UpdateMeDto model, CancellationToken cancellationToken)
         {
             IIdentity? identity = HttpContext.User.Identity;
             int userId = identity.GetUserId<int>();

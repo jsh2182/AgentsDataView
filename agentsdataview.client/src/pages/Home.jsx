@@ -111,7 +111,7 @@ export default function Home() {
                 <td>شماره همراه:</td>
                 <td>
                   <input type="number" className="table-row-input" defaultValue={user.u_mobile}
-                    {...register("userMobile", { required: "نام کاربری الزامی است" })} />
+                    {...register("userMobile", { required: "شماره همراه الزامی است" })} />
                 </td>
 
               </tr>

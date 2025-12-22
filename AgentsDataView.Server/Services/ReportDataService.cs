@@ -5,11 +5,12 @@ using AgentsDataView.Entities;
 using static AgentsDataView.Entities.BaseInfoes.InvoiceTypes;
 using Microsoft.EntityFrameworkCore;
 using static AgentsDataView.Entities.BaseInfoes;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace AgentsDataView.Services
 {
-    public class ReportDataService(IRepository<Invoice> invoiceRepo, 
-        IRepository<Company> companyRepo, 
+    public class ReportDataService(IRepository<Invoice> invoiceRepo,
+        IRepository<Company> companyRepo,
         IRepository<InvoiceDetail> invoiceDetailsRepo,
         IInvoiceService invoiceService) : IReportDataService
     {
@@ -44,9 +45,13 @@ namespace AgentsDataView.Services
             // ------------------------------
             // کوئری کشوری
             // ------------------------------
+            DateTime dateFrom = new(2025, 3, 21);
+            DateTime dateTo = new(2026, 3, 20);
             var inputCountryQuery = _invoiceDetailsRepo.QueryNoTracking
                 .Where(d =>
                 d.Invoice.InvoiceState == InvoiceStates.Approved &&
+                d.Invoice.InvoiceDate >= dateFrom &&
+                d.Invoice.InvoiceDate <= dateTo &&
                 _inputTypes.Contains(d.Invoice.InvoiceType) &&
                 d.Invoice.Company.ProvinceId != null)
                 .GroupBy(d => new { d.Product.Code, d.Product.Name })
@@ -176,9 +181,13 @@ namespace AgentsDataView.Services
 
         public async Task<IEnumerable> GetReportByProvince_Cumulative(CancellationToken cancellationToken)
         {
+            DateTime dateFrom = new(2025, 3, 21);
+            DateTime dateTo = new(2026, 3, 20);
             var inputQuery = _invoiceDetailsRepo.QueryNoTracking
                 .Where(d =>
                 d.Invoice.InvoiceState == InvoiceStates.Approved &&
+                d.Invoice.InvoiceDate >= dateFrom &&
+                            d.Invoice.InvoiceDate <= dateTo &&
                 _inputTypes.Contains(d.Invoice.InvoiceType) && d.Invoice.Company.ProvinceId != null)
                 .GroupBy(d => d.Invoice.Company.Province.ProvinceName)
                 .Select(g => new ReportResultDto
@@ -204,7 +213,7 @@ namespace AgentsDataView.Services
                     ProvinceOutputTotal = g.Sum(d => d.TotalPrice)
                 });
 
-            ReportResultDto[]? result = await inputQuery
+            List<ReportResultDto> result = await inputQuery
                 .Concat(outputQuery)
                 .GroupBy(x => x.ProvinceName)
                 .Select(g => new ReportResultDto
@@ -216,9 +225,22 @@ namespace AgentsDataView.Services
                     ProvinceOutputTotal = Math.Round(g.Sum(x => x.ProvinceOutputTotal))
                 })
                 .OrderBy(g => g.ProvinceName)
-                .ToArrayAsync(cancellationToken)
+                .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
-            return result;
+            var existingProvinces = result.Select(r => r.ProvinceName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var provinceList = await _companyRepo.QueryNoTracking.Where(c => c.ProvinceId != null).Select(c => c.Province.ProvinceName).ToListAsync(cancellationToken);
+            foreach (var p in provinceList)
+            {
+                if (!existingProvinces.Contains(p))
+                {
+                    result.Add(new ReportResultDto()
+                    {
+                        ProvinceName = p
+                    });
+                }
+            }
+
+            return result.OrderBy(r => r.ProvinceName);
         }
 
         public async Task<IEnumerable> GetReportByCompanyAndProduct(int? provinceId, CancellationToken cancellationToken)
@@ -229,8 +251,13 @@ namespace AgentsDataView.Services
             // -----------------------------
             // Input Query
             // -----------------------------
+
+            DateTime dateFrom = new(2025, 3, 21);
+            DateTime dateTo = new(2026, 3, 20);
             var inputQuery = _invoiceDetailsRepo.QueryNoTracking
                 .Where(d => d.Invoice.InvoiceState == InvoiceStates.Approved &&
+                            d.Invoice.InvoiceDate >= dateFrom &&
+                            d.Invoice.InvoiceDate <= dateTo &&
                             _inputTypes.Contains(d.Invoice.InvoiceType) &&
                             d.Invoice.Company.ProvinceId != null &&
                             (!provinceId.HasValue || d.Invoice.Company.ProvinceId == provinceId))
@@ -321,12 +348,16 @@ namespace AgentsDataView.Services
 
         public async Task<ReportResultDto[]> GetProfitReportByCompany(int? provinceId, CancellationToken cancellationToken)
         {
+            DateTime dateFrom = new(2025, 3, 21);
+            DateTime dateTo = new(2026, 3, 20);
             var result = await _invoiceDetailsRepo.QueryNoTracking
                 .Where(d => d.Invoice.InvoiceType == Sales &&
+                            d.Invoice.InvoiceDate >= dateFrom &&
+                            d.Invoice.InvoiceDate <= dateTo &&
                 d.Invoice.InvoiceState == InvoiceStates.Approved &&
                 d.Invoice.Company.ProvinceId != null &&
                 (!provinceId.HasValue || d.Invoice.Company.ProvinceId == provinceId))
-                .GroupBy(d => new {CompanyCode = d.Invoice.Company.Code, CompanyName = d.Invoice.Company.Name, d.Invoice.CompanyId })
+                .GroupBy(d => new { CompanyCode = d.Invoice.Company.Code, CompanyName = d.Invoice.Company.Name, d.Invoice.CompanyId })
                 .Select(g => new ReportResultDto
                 {
                     CompanyCode = g.Key.CompanyCode,
@@ -336,7 +367,8 @@ namespace AgentsDataView.Services
                     CompanyOutputTotal = Math.Round(g.Sum(x => x.TotalPrice)),
                     CostOfGoodsSold = Math.Round(g.Sum(x => x.Quantity * x.CostOfGoodsSold)),
                     ProfitLoss = Math.Round(g.Sum(x => x.TotalPrice - x.Quantity * x.CostOfGoodsSold))
-                }).OrderBy(r => r.CompanyCode).ToArrayAsync(cancellationToken).ConfigureAwait(false);
+                }).OrderBy(r => r.CompanyCode).ToListAsync(cancellationToken).ConfigureAwait(false);
+
             var invoiceDiscounts = await _invoiceRepo.QueryNoTracking
                   .Where(i => i.InvoiceType == Sales &&
                   i.InvoiceState == InvoiceStates.Approved &&
@@ -348,26 +380,46 @@ namespace AgentsDataView.Services
                       CompanyId = g.Key,
                       Discount = g.Sum(gg => gg.DiscountValue)
                   }).ToDictionaryAsync(i => i.CompanyId, i => i.Discount, cancellationToken).ConfigureAwait(false);
+
             var invDict = await _invoiceService.GetMaxInvoiceDates(cancellationToken);
-            foreach (var c in result)
-            {
-                invDict.TryGetValue(c.CompanyId, out var inv);
-                c.CompanyMaxInvoiceCreationDate = inv.MaxCreationDate;
-                c.CompanyMaxInvoiceDate = inv.MaxInvoiceDate;
-            }
+
             foreach (var item in result)
             {
                 invoiceDiscounts.TryGetValue(item.CompanyId, out decimal discount);
                 item.ProfitLoss -= discount;
-                item.ProfitLossPercent = Math.Round( (item.ProfitLoss / item.CompanyOutputTotal) * 100,2);
+                item.ProfitLossPercent = Math.Round((item.ProfitLoss / item.CompanyOutputTotal) * 100, 2);
+                invDict.TryGetValue(item.CompanyId, out var inv);
+                item.CompanyMaxInvoiceCreationDate = inv.MaxCreationDate;
+                item.CompanyMaxInvoiceDate = inv.MaxInvoiceDate;
             }
-            return result;
+            if (!(provinceId > 0))
+            {
+                var existingComps = result.Select(r => r.CompanyId).ToHashSet();
+                var allComps = _companyRepo.QueryNoTracking.Where(c => c.ProvinceId != null).Select(c => new { c.Name, c.Id, c.Code });
+                foreach (var comp in allComps)
+                {
+                    if (!existingComps.Contains(comp.Id))
+                    {
+                        result.Add(new ReportResultDto()
+                        {
+                            CompanyId = comp.Id,
+                            CompanyCode = comp.Code,
+                            CompanyName = comp.Name
+                        });
+                    }
+                }
+            }
+            return result.OrderBy(c=>c.CompanyCode).ToArray();
         }
-        public async Task<ReportResultDto[]?> GetProfitReportByProvince(CancellationToken cancellationToken)
+        public async Task<ReportResultDto[]> GetProfitReportByProvince(CancellationToken cancellationToken)
         {
             // Query کشوری
+            DateTime dateFrom = new(2025, 3, 21);
+            DateTime dateTo = new(2026, 3, 20);
             var countryQuery = _invoiceDetailsRepo.QueryNoTracking
                 .Where(d =>
+                d.Invoice.InvoiceDate >= dateFrom &&
+                d.Invoice.InvoiceDate <= dateTo &&
                 d.Invoice.InvoiceState == InvoiceStates.Approved &&
                 d.Invoice.InvoiceType == Sales &&
                 d.Invoice.Company.ProvinceId != null)
@@ -402,8 +454,7 @@ namespace AgentsDataView.Services
             // ترکیب دو query و اجرای نهایی
             var result = await countryQuery
                 .Concat(provinceQuery)
-                .OrderBy(d => d.ProvinceName == "تجمیع کشوری" ? "" : d.ProvinceName)
-                .ToArrayAsync(cancellationToken)
+                .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
             var invoiceDiscounts = await _invoiceRepo.QueryNoTracking
                 .Where(i =>
@@ -413,17 +464,35 @@ namespace AgentsDataView.Services
                 .GroupBy(g => g.Company.ProvinceId.Value)
                 .Select(g => new
                 {
-                    ProvinceId = g.Key,          
+                    ProvinceId = g.Key,
                     Discount = g.Sum(gg => gg.DiscountValue)
                 }).ToDictionaryAsync(i => i.ProvinceId, i => i.Discount, cancellationToken).ConfigureAwait(false);
 
+            var existingProvinces = result.Select(r => r.ProvinceId).ToHashSet();
+            var provinceList = await _companyRepo.QueryNoTracking.Where(c => c.ProvinceId != null).Select(c => new { c.ProvinceId, c.Province.ProvinceName }).ToListAsync(cancellationToken);
+            foreach (var p in provinceList)
+            {
+                if (!existingProvinces.Contains(p.ProvinceId))
+                {
+                    result.Add(new ReportResultDto()
+                    {
+                        ProvinceName = p.ProvinceName,
+                        ProvinceId = p.ProvinceId
+                    });
+                }
+            }
             foreach (var item in result)
             {
+
                 invoiceDiscounts.TryGetValue(item.ProvinceId.Value, out decimal discount);
                 item.ProfitLoss -= discount;
+                if (item.ProvinceOutputTotal == 0)
+                {
+                    continue;
+                }
                 item.ProfitLossPercent = Math.Round((item.ProfitLoss / item.ProvinceOutputTotal) * 100, 2);
             }
-            return result;
+            return result.OrderBy(d => d.ProvinceName == "تجمیع کشوری" ? "" : d.ProvinceName).ToArray();
         }
 
 
