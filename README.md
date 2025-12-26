@@ -21,7 +21,6 @@ AgentsDataView is a modern full-stack web application that combines a **scalable
 - **ORM & DB:** Entity Framework Core + SQL Server  
 - **Logging:** NLog (file + database)  
 - **API Documentation:** Swagger / Swashbuckle with annotations  
-- **Unit Testing:** xUnit for backend services  
 
 ---
 
@@ -35,7 +34,6 @@ AgentsDataView is a modern full-stack web application that combines a **scalable
 | ORM & DB     | Entity Framework Core, SQL Server |
 | Logging      | NLog, NLog.Database, NLog.Web.AspNetCore |
 | API Docs     | Swashbuckle / Swagger |
-| Testing      | xUnit |
 | PWA          | vite-plugin-pwa |
 
 ---
@@ -48,3 +46,8 @@ cd backend
 dotnet restore
 dotnet build
 dotnet run
+### Frontend
+cd ../agentsdataview.client
+npm install
+npm run dev
+SPA runs via ASP.NET Core SPA Proxy on https://localhost:5173.
