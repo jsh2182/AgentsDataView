@@ -125,21 +125,21 @@ namespace AgentsDataView.Server.Controllers
                 {
                     return BadRequest("عملیات بروزرسانی هم اکنون در حال انجام است");
                 }
-                //var setting = await _settingRepo.QueryNoTracking.FirstAsync(s => s.SettingName == "LastUpdateDate", cancellationToken);
-                //if (!string.IsNullOrEmpty(setting?.SettingValue))
-                //{
-                //    var lastUpdate = DateTimeOffset.Parse(setting.SettingValue);
+                var setting = await _settingRepo.QueryNoTracking.FirstAsync(s => s.SettingName == "LastUpdateDate", cancellationToken);
+                if (!string.IsNullOrEmpty(setting?.SettingValue))
+                {
+                    var lastUpdate = DateTimeOffset.Parse(setting.SettingValue);
 
-                //    TimeSpan cooldown = TimeSpan.FromMinutes(30);
-                //    TimeSpan elapsed = DateTimeOffset.UtcNow - lastUpdate;
+                    TimeSpan cooldown = TimeSpan.FromMinutes(30);
+                    TimeSpan elapsed = DateTimeOffset.UtcNow - lastUpdate;
 
-                //    if (elapsed < cooldown)
-                //    {
-                //        TimeSpan remaining = cooldown - elapsed;
-                //        string message = $"لطفاً {remaining.Minutes} دقیقه و {remaining.Seconds} ثانیه دیگر تلاش کنید.";
-                //        return BadRequest(message);
-                //    }
-                //}
+                    if (elapsed < cooldown)
+                    {
+                        TimeSpan remaining = cooldown - elapsed;
+                        string message = $"لطفاً {remaining.Minutes} دقیقه و {remaining.Seconds} ثانیه دیگر تلاش کنید.";
+                        return BadRequest(message);
+                    }
+                }
                 var identity = HttpContext.User.Identity;
                 int companyId = identity?.GetCompanyId() ?? 0;
                 int userId = identity.GetUserId<int>();

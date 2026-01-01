@@ -18,40 +18,40 @@ const UpdateButton = () => {
   const timerRef = useRef(null); // Ref برای نگهداری تایمر
 
   // بررسی cooldown بعد از refresh
-  // useEffect(() => {
-  //     const lastClick = localStorage.getItem(STORAGE_KEY);
-  //     if (lastClick) {
-  //         const diff = COOLDOWN_MS - (Date.now() - Number(lastClick));
-  //         if (diff > 0) {
-  //             setTimeLeft(Math.ceil(diff / 1000));
-  //         }
-  //     }
-  // }, []);
+  useEffect(() => {
+      const lastClick = localStorage.getItem(STORAGE_KEY);
+      if (lastClick) {
+          const diff = COOLDOWN_MS - (Date.now() - Number(lastClick));
+          if (diff > 0) {
+              setTimeLeft(Math.ceil(diff / 1000));
+          }
+      }
+  }, []);
 
-  // // تایمر شمارش معکوس (یک بار ساخته می‌شود)
-  // useEffect(() => {
-  //     if (timeLeft <= 0) return;
+  // تایمر شمارش معکوس (یک بار ساخته می‌شود)
+  useEffect(() => {
+      if (timeLeft <= 0) return;
 
-  //     if (!timerRef.current) {
-  //         timerRef.current = setInterval(() => {
-  //             setTimeLeft(prev => {
-  //                 if (prev <= 1) {
-  //                     clearInterval(timerRef.current);
-  //                     timerRef.current = null;
-  //                     return 0;
-  //                 }
-  //                 return prev - 1;
-  //             });
-  //         }, 1000);
-  //     }
+      if (!timerRef.current) {
+          timerRef.current = setInterval(() => {
+              setTimeLeft(prev => {
+                  if (prev <= 1) {
+                      clearInterval(timerRef.current);
+                      timerRef.current = null;
+                      return 0;
+                  }
+                  return prev - 1;
+              });
+          }, 1000);
+      }
 
-  //     return () => {
-  //         if (timerRef.current && timeLeft <= 0) {
-  //             clearInterval(timerRef.current);
-  //             timerRef.current = null;
-  //         }
-  //     };
-  // }, [timeLeft]);
+      return () => {
+          if (timerRef.current && timeLeft <= 0) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+          }
+      };
+  }, [timeLeft]);
 
   const handleClick = async () => {
     localStorage.setItem(STORAGE_KEY, Date.now());

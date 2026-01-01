@@ -6,6 +6,7 @@ using static AgentsDataView.Entities.BaseInfoes.InvoiceTypes;
 using Microsoft.EntityFrameworkCore;
 using static AgentsDataView.Entities.BaseInfoes;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Diagnostics.Eventing.Reader;
 
 namespace AgentsDataView.Services
 {
@@ -392,10 +393,11 @@ namespace AgentsDataView.Services
                 item.CompanyMaxInvoiceCreationDate = inv.MaxCreationDate;
                 item.CompanyMaxInvoiceDate = inv.MaxInvoiceDate;
             }
-            if (!(provinceId > 0))
+            HashSet<int> existingComps = result.Select(r => r.CompanyId).ToHashSet(); ;
+            if (provinceId != -1)
             {
-                var existingComps = result.Select(r => r.CompanyId).ToHashSet();
-                var allComps = _companyRepo.QueryNoTracking.Where(c => c.ProvinceId != null).Select(c => new { c.Name, c.Id, c.Code });
+                
+                var allComps = _companyRepo.QueryNoTracking.Where(c => c.ProvinceId != null && (provinceId == null || c.ProvinceId == provinceId)).Select(c => new { c.Name, c.Id, c.Code });
                 foreach (var comp in allComps)
                 {
                     if (!existingComps.Contains(comp.Id))
@@ -406,6 +408,7 @@ namespace AgentsDataView.Services
                             CompanyCode = comp.Code,
                             CompanyName = comp.Name
                         });
+                        existingComps.Add(comp.Id);
                     }
                 }
             }
@@ -479,6 +482,7 @@ namespace AgentsDataView.Services
                         ProvinceName = p.ProvinceName,
                         ProvinceId = p.ProvinceId
                     });
+                    existingProvinces.Add(p.ProvinceId);
                 }
             }
             foreach (var item in result)

@@ -123,11 +123,11 @@ namespace AgentsDataView.Server.Controllers
                 {
                     return BadRequest("شرکت دیگری با این نام ثبت شده است.");
                 }
-                if (stringArray[1] == existingComp.Code)
+                if (stringArray[1] == existingComp.Address )
                 {
                     return BadRequest("شرکت دیگری با این کد ثبت شده است.");
                 }
-                if (stringArray[2] == existingComp.Address)
+                if (stringArray[2] == existingComp.Code)
                 {
                     return BadRequest("شرکت دیگری با این نشانی ثبت شده است.");
                 }
