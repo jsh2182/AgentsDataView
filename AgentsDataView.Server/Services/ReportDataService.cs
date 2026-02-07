@@ -1,12 +1,10 @@
-﻿using AgentsDataView.Entities.DtoModels;
-using System.Collections;
-using AgentsDataView.Data.Contracts;
+﻿using AgentsDataView.Data.Contracts;
 using AgentsDataView.Entities;
-using static AgentsDataView.Entities.BaseInfoes.InvoiceTypes;
+using AgentsDataView.Entities.DtoModels;
 using Microsoft.EntityFrameworkCore;
+using System.Collections;
 using static AgentsDataView.Entities.BaseInfoes;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using System.Diagnostics.Eventing.Reader;
+using static AgentsDataView.Entities.BaseInfoes.InvoiceTypes;
 
 namespace AgentsDataView.Services
 {
@@ -38,10 +36,10 @@ namespace AgentsDataView.Services
             GoodsIssue,
             InventoryAdjustment_Decrease
         ];
-        public async Task<ReportResultDto[]> GetReportByProvince(int? provinceId, CancellationToken cancellationToken)
+        public async Task<ReportResultDto[]> GetReportByProvince(int[]? provinceIds, CancellationToken cancellationToken)
         {
 
-
+            provinceIds ??= [];
 
             // ------------------------------
             // کوئری کشوری
@@ -102,12 +100,12 @@ namespace AgentsDataView.Services
             // ------------------------------
             ProductAggregationDto[] provinceGrouped = [];
 
-            if (provinceId > 0)
+            if (provinceIds.Length > 0)
             {
                 var inputProvinceQuery = _invoiceDetailsRepo.QueryNoTracking
                     .Where(d =>
                     d.Invoice.InvoiceState == InvoiceStates.Approved &&
-                    d.Invoice.Company.ProvinceId == provinceId &&
+                    provinceIds.Contains(d.Invoice.Company.ProvinceId.Value) &&
                     _inputTypes.Contains(d.Invoice.InvoiceType))
                     .GroupBy(d => new { d.Product.Code, d.Product.Name })
                     .Select(g => new ProductAggregationDto
@@ -123,7 +121,7 @@ namespace AgentsDataView.Services
                 var outputProvinceQuery = _invoiceDetailsRepo.QueryNoTracking
                     .Where(d =>
                     d.Invoice.InvoiceState == InvoiceStates.Approved &&
-                    d.Invoice.Company.ProvinceId == provinceId &&
+                    provinceIds.Contains(d.Invoice.Company.ProvinceId.Value) &&
                     _outputTypes.Contains(d.Invoice.InvoiceType))
                     .GroupBy(d => new { d.Product.Code, d.Product.Name })
                     .Select(g => new ProductAggregationDto
@@ -180,8 +178,9 @@ namespace AgentsDataView.Services
             return [.. result.OrderBy(p => p.ProductName)];
         }
 
-        public async Task<IEnumerable> GetReportByProvince_Cumulative(CancellationToken cancellationToken)
+        public async Task<IEnumerable> GetReportByProvince_Cumulative(int[]? provinceIds,CancellationToken cancellationToken)
         {
+            provinceIds ??= [];
             DateTime dateFrom = new(2025, 3, 21);
             DateTime dateTo = new(2026, 3, 20);
             var inputQuery = _invoiceDetailsRepo.QueryNoTracking
@@ -189,7 +188,10 @@ namespace AgentsDataView.Services
                 d.Invoice.InvoiceState == InvoiceStates.Approved &&
                 d.Invoice.InvoiceDate >= dateFrom &&
                             d.Invoice.InvoiceDate <= dateTo &&
-                _inputTypes.Contains(d.Invoice.InvoiceType) && d.Invoice.Company.ProvinceId != null)
+                _inputTypes.Contains(d.Invoice.InvoiceType) && 
+                d.Invoice.Company.ProvinceId != null // && 
+                //(provinceIds.Length ==0 || provinceIds.Contains(d.Invoice.Company.ProvinceId.Value))
+                )
                 .GroupBy(d => d.Invoice.Company.Province.ProvinceName)
                 .Select(g => new ReportResultDto
                 {
@@ -244,10 +246,10 @@ namespace AgentsDataView.Services
             return result.OrderBy(r => r.ProvinceName);
         }
 
-        public async Task<IEnumerable> GetReportByCompanyAndProduct(int? provinceId, CancellationToken cancellationToken)
+        public async Task<IEnumerable> GetReportByCompanyAndProduct(int[]? provinceIds, CancellationToken cancellationToken)
         {
 
-
+            provinceIds ??= [];
 
             // -----------------------------
             // Input Query
@@ -261,7 +263,7 @@ namespace AgentsDataView.Services
                             d.Invoice.InvoiceDate <= dateTo &&
                             _inputTypes.Contains(d.Invoice.InvoiceType) &&
                             d.Invoice.Company.ProvinceId != null &&
-                            (!provinceId.HasValue || d.Invoice.Company.ProvinceId == provinceId))
+                            (provinceIds.Length == 0 || provinceIds.Contains(d.Invoice.Company.ProvinceId.Value)))
                 .GroupBy(d => new
                 {
                     CompanyName = d.Invoice.Company.Name,
@@ -286,7 +288,7 @@ namespace AgentsDataView.Services
                 .Where(d => d.Invoice.InvoiceState == InvoiceStates.Approved &&
                             _outputTypes.Contains(d.Invoice.InvoiceType) &&
                             d.Invoice.Company.ProvinceId != null &&
-                            (!provinceId.HasValue || d.Invoice.Company.ProvinceId == provinceId))
+                            (provinceIds.Length == 0 || provinceIds.Contains(d.Invoice.Company.ProvinceId.Value)))
                 .GroupBy(d => new
                 {
                     CompanyName = d.Invoice.Company.Name,
@@ -347,8 +349,9 @@ namespace AgentsDataView.Services
         }
 
 
-        public async Task<ReportResultDto[]> GetProfitReportByCompany(int? provinceId, CancellationToken cancellationToken)
+        public async Task<ReportResultDto[]> GetProfitReportByCompany(int[]? provinceIds, CancellationToken cancellationToken)
         {
+            provinceIds ??= [];
             DateTime dateFrom = new(2025, 3, 21);
             DateTime dateTo = new(2026, 3, 20);
             var result = await _invoiceDetailsRepo.QueryNoTracking
@@ -357,7 +360,7 @@ namespace AgentsDataView.Services
                             d.Invoice.InvoiceDate <= dateTo &&
                 d.Invoice.InvoiceState == InvoiceStates.Approved &&
                 d.Invoice.Company.ProvinceId != null &&
-                (!provinceId.HasValue || d.Invoice.Company.ProvinceId == provinceId))
+                (!(provinceIds.Length > 0)  || provinceIds.Contains(d.Invoice.Company.ProvinceId??0)))
                 .GroupBy(d => new { CompanyCode = d.Invoice.Company.Code, CompanyName = d.Invoice.Company.Name, d.Invoice.CompanyId })
                 .Select(g => new ReportResultDto
                 {
@@ -374,7 +377,7 @@ namespace AgentsDataView.Services
                   .Where(i => i.InvoiceType == Sales &&
                   i.InvoiceState == InvoiceStates.Approved &&
                   i.Company.ProvinceId != null &&
-                  (!provinceId.HasValue || i.Company.ProvinceId == provinceId))
+                  (!(provinceIds.Length > 0) || provinceIds.Contains( i.Company.ProvinceId??0)))
                   .GroupBy(i => i.CompanyId)
                   .Select(g => new
                   {
@@ -394,10 +397,10 @@ namespace AgentsDataView.Services
                 item.CompanyMaxInvoiceDate = inv.MaxInvoiceDate;
             }
             HashSet<int> existingComps = result.Select(r => r.CompanyId).ToHashSet(); ;
-            if (provinceId != -1)
+            if (provinceIds.Length == 0 || provinceIds[0] != -1)
             {
                 
-                var allComps = _companyRepo.QueryNoTracking.Where(c => c.ProvinceId != null && (provinceId == null || c.ProvinceId == provinceId)).Select(c => new { c.Name, c.Id, c.Code });
+                var allComps = _companyRepo.QueryNoTracking.Where(c => c.ProvinceId != null && (provinceIds.Length ==0 || provinceIds.Contains(c.ProvinceId.Value))).Select(c => new { c.Name, c.Id, c.Code });
                 foreach (var comp in allComps)
                 {
                     if (!existingComps.Contains(comp.Id))
@@ -412,10 +415,11 @@ namespace AgentsDataView.Services
                     }
                 }
             }
-            return result.OrderBy(c=>c.CompanyCode).ToArray();
+            return [.. result.OrderBy(c => c.CompanyCode)];
         }
-        public async Task<ReportResultDto[]> GetProfitReportByProvince(CancellationToken cancellationToken)
+        public async Task<ReportResultDto[]> GetProfitReportByProvince(int[]? provinceIds, CancellationToken cancellationToken)
         {
+            provinceIds ??= [];
             // Query کشوری
             DateTime dateFrom = new(2025, 3, 21);
             DateTime dateTo = new(2026, 3, 20);
@@ -442,7 +446,9 @@ namespace AgentsDataView.Services
                 .Where(d =>
                 d.Invoice.InvoiceState == InvoiceStates.Approved &&
                 d.Invoice.InvoiceType == Sales &&
-                d.Invoice.Company.ProvinceId != null)
+                d.Invoice.Company.ProvinceId != null &&
+                (provinceIds.Length == 0 || provinceIds.Contains( d.Invoice.Company.ProvinceId.Value))
+                )
                 .GroupBy(d => new { d.Invoice.Company.Province.ProvinceName, d.Invoice.Company.ProvinceId })
                 .Select(g => new ReportResultDto
                 {
@@ -463,7 +469,8 @@ namespace AgentsDataView.Services
                 .Where(i =>
                 i.InvoiceState == InvoiceStates.Approved &&
                 i.InvoiceType == Sales &&
-                i.Company.ProvinceId != null)
+                i.Company.ProvinceId != null &&
+                (provinceIds.Length == 0 || provinceIds.Contains(i.Company.ProvinceId.Value)))
                 .GroupBy(g => g.Company.ProvinceId.Value)
                 .Select(g => new
                 {

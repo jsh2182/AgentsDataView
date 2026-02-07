@@ -5,9 +5,8 @@ namespace AgentsDataView.Entities.DtoModels
 {
     public class UserDto : IValidatableObject
     {
-        public int CompanyId { get; set; }
         public int Id { get; set; }
-        [Required(ErrorMessage="وارد کردن نام کاربری الزامی است.")]
+        [Required(AllowEmptyStrings = false, ErrorMessage="وارد کردن نام کاربری الزامی است.")]
         [StringLength(100)]
         public string? UserName { get; set; }
         [Required(ErrorMessage="وارد کردن نام کامل الزامی است.")]
@@ -18,6 +17,11 @@ namespace AgentsDataView.Entities.DtoModels
         public long? RelatedPersonID { get; set; }
         public bool IsActive { get; set; } = true;
         public string? LoginInfo { get; set; }
+        public int[]? CompanyIds { get; set; }
+        /// <summary>
+        /// برای وقتی که کاربر قصد دارد ارتباط را با انتخاب استان ایجاد کند.
+        /// </summary>
+        public int[]? ProvinceIds { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
@@ -25,9 +29,9 @@ namespace AgentsDataView.Entities.DtoModels
                 {
                 yield return new ValidationResult("شماره همراه معتبر نیست", [nameof(UserMobile)]);
             }
-            if(CompanyId < 1)
+            if(!(CompanyIds?.Length > 0) && !(ProvinceIds?.Length >0))
             {
-                yield return new ValidationResult("شناسه شرکت باید بزرگتر از صفر باشد.", [nameof(CompanyId)]);
+                yield return new ValidationResult("کاربر باید دست کم به یک شرکت یا استان متصل باشد.", [nameof(CompanyIds)]);
             }
         }
     }

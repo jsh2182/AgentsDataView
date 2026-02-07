@@ -14,7 +14,7 @@ import { useForm } from "react-hook-form";
 import { useEffect, useRef, useState } from "react";
 import { useStickyHeader } from "../utils/useStickeHeader";
 import IranMap from "../components/IranMap";
-import { useGetAllProvincesQuery } from "../store/province/provinceApi";
+import { useLazyGetAllProvincesQuery } from "../store/province/provinceApi";
 import CustomActiveShapePieChart from "../components/CustomActiveShapePieChart";
 import PieChartWithCustomizedLabel from "../components/PieChartWithCustomizedLabel";
 import { useGetLastUpdateQuery } from "../store/invoice/invoiceApi";
@@ -38,7 +38,7 @@ export default function Home() {
   const [getReportByCompanyAndProduct, { data: reportByCompanyAndProduct, isFetching: reportByCompanyAndProductLoading, error: reportByCompanyAndProductError }] = useLazyGetReportByCompanyAndProductQuery();
   const [getRepotByProvince, { data: reportByProvince, isFetching: reportByProvinceQueryLoading, error: reportByProvinceError }] = useLazyGetReportByProvinceQuery();
   // const { data: reportByProvince_Cumulative, isLoading: reportByProvince_CumulativeLoading, error: reportByProvince_CumulativeError } = useGetReportByProvince_CumulativeQuery();
-  const { data: provinceList, isLoading: loadingProvinceList } = useGetAllProvincesQuery();
+  const [getProvinceList,{ data: provinceList, isLoading: loadingProvinceList }] = useLazyGetAllProvincesQuery();
   const { register, handleSubmit, formState: { errors } } = useForm();
   const [hiddenLabel, setHiddenLabel] = useState(null);
   const isMobile = useIsMobile();
@@ -179,6 +179,9 @@ export default function Home() {
     scrollContainer.addEventListener("scroll", handleScroll);
     return () => scrollContainer.removeEventListener("scroll", handleScroll);
   }, [reportByCompanyAndProduct]);
+  useEffect(()=>{
+    getProvinceList(true);
+  },[])
   return (
     user &&
     <div className="p-1 border rounded m-2">

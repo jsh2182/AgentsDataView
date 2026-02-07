@@ -1,5 +1,4 @@
-﻿using AgentsDataView.Server.Entities;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace AgentsDataView.Entities
 {

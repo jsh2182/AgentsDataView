@@ -141,7 +141,7 @@ namespace AgentsDataView.Server.Controllers
                     }
                 }
                 var identity = HttpContext.User.Identity;
-                int companyId = identity?.GetCompanyId() ?? 0;
+                //int companyId = identity?.GetCompanyId() ?? 0;
                 int userId = identity.GetUserId<int>();
                 await _invoiceService.UpdateAllInvoices( userId, cancellationToken);
 

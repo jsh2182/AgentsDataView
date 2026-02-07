@@ -35,7 +35,7 @@ namespace AgentsDataView.Entities
         public virtual ICollection<Product>? Products { get; set; }
         public virtual ICollection<Invoice>? Invoices { get; set; }
         public virtual ICollection<FinancialPeriod>? FinancialPeriods { get; set; }
-        public virtual ICollection<SystemUser>? SystemUsers { get; set; }
+        public virtual ICollection<CompanyUserRelation>? CompanyUserRelations { get; set; }
 
 
 

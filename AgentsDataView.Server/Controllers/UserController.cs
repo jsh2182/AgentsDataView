@@ -6,10 +6,10 @@ using AgentsDataView.Data.Repositories;
 using AgentsDataView.Entities;
 using AgentsDataView.Entities.DtoModels;
 using AgentsDataView.Services;
-using AgentsDataView.WebFramework.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using System.Security.Principal;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -18,11 +18,19 @@ namespace IranSAS.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UserController(IRepository<RefreshToken> refreshTokenRepo, IUserRepository userRepository, IJwtService jwtService) : ControllerBase
+    public class UserController(IJwtService jwtService,
+                                IUserRepository userRepository,
+                                IRepository<Company> companyRepo,
+                                IRepository<RefreshToken> refreshTokenRepo,
+                                IRepository<CompanyUserRelation> compUserRelationRepo
+                                ) : ControllerBase
     {
-        private readonly IRepository<RefreshToken> _refreshTokenRepo = refreshTokenRepo;
-        private readonly IUserRepository _userRepository = userRepository;
         private readonly IJwtService _jwtService = jwtService;
+        private readonly IRepository<Company> _companyRepo = companyRepo;
+        private readonly IUserRepository _userRepository = userRepository;
+        private readonly IRepository<RefreshToken> _refreshTokenRepo = refreshTokenRepo;
+        private readonly IRepository<CompanyUserRelation> _compUserRelationRepo = compUserRelationRepo;
+
 
         [HttpPost("[action]")]
         [AllowAnonymous]
@@ -54,10 +62,10 @@ namespace IranSAS.Server.Controllers
         [HttpGet("[action]")]
         public async Task<ActionResult<UserDto[]>> GetAll(int? companyId, CancellationToken cancellationToken)
         {
-            var qry = _userRepository.QueryNoTracking.Where(q => q.UserName != "super");
+            var qry = _userRepository.QueryNoTracking.Where(q => !q.IsApiUser && q.UserName != "super");
             if (companyId > 0)
             {
-                qry = qry.Where(q => q.CompanyId == companyId);
+                qry = qry.Where(q => q.CompanyUserRelations.Any(c => c.CompanyId == companyId));
             }
             UserDto[] result = await qry.Select(u =>
             new UserDto()
@@ -66,7 +74,9 @@ namespace IranSAS.Server.Controllers
                 Id = u.Id,
                 IsActive = u.IsActive,
                 UserMobile = u.UserMobile,
-                UserName = u.UserName
+                UserName = u.UserName,
+                CompanyIds = u.CompanyUserRelations.Select(c => c.CompanyId).ToArray(),
+                ProvinceIds = u.CompanyUserRelations.Select(c=>c.Company.ProvinceId.Value).Distinct().ToArray(),
             })
                 .ToArrayAsync(cancellationToken);
             return Ok(result);
@@ -92,16 +102,50 @@ namespace IranSAS.Server.Controllers
             }
             SystemUser user = new()
             {
-                CompanyId = model.CompanyId,
                 Id = model.Id,
                 UserMobile = model.UserMobile,
                 Password = model.Password,
                 UserFullName = model.UserFullName,
-                UserName = model.UserName
+                UserName = model.UserName ?? ""
             };
-            await _userRepository.AddAsync(user, cancellationToken);
+            await using var transaction = await _userRepository.BeginTransaction(cancellationToken);
+            try
+            {
+
+                await _userRepository.AddAsync(user, cancellationToken);
+
+                #region ===================================== Relations ======================
+
+                if (model.ProvinceIds?.Length > 0 && !(model.CompanyIds?.Length > 0))
+                {
+                    model.ProvinceIds = model.ProvinceIds.Distinct().ToArray();
+                    model.CompanyIds =
+                    await _companyRepo.QueryNoTracking.Where(c => c.ProvinceId != null && model.ProvinceIds.Contains(c.ProvinceId.Value))
+                         .Select(c => c.Id).ToArrayAsync(cancellationToken);
+                }
+                if (model.CompanyIds?.Length > 0)
+                {
+                    var relations = model.CompanyIds.Distinct().Select(c => new CompanyUserRelation() { Id = 0, CompanyId = c, UserId = user.Id });
+                    await _compUserRelationRepo.AddRangeAsync(relations, cancellationToken);
+
+                }
+                else
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return BadRequest("هیچ شرکتی در استان های انتخاب شده ثبت نشده است.");
+                }
+
+                #endregion
+
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
             user.Password = null;
-            return Ok( user);
+            return Ok(user);
         }
 
         [HttpPut("[action]")]
@@ -115,7 +159,38 @@ namespace IranSAS.Server.Controllers
             user.UserFullName = model.UserFullName;
             user.UserName = model.UserName;
             user.UserMobile = model.UserMobile;
-            await _userRepository.UpdateAsync(user, cancellationToken);
+            await using var transaction = await _userRepository.BeginTransaction(cancellationToken);
+            try
+            {
+
+                await _userRepository.UpdateAsync(user, cancellationToken);
+                #region ===================================== Relations ======================
+
+                if (model.ProvinceIds?.Length > 0 && !(model.CompanyIds?.Length > 0))
+                {
+                    model.ProvinceIds = model.ProvinceIds.Distinct().ToArray();
+                    model.CompanyIds =
+                    await _companyRepo.QueryNoTracking.Where(c => c.ProvinceId != null && model.ProvinceIds.Contains(c.ProvinceId.Value))
+                         .Select(c => c.Id).ToArrayAsync(cancellationToken);
+                }
+                if (model.CompanyIds?.Length > 0)
+                {
+                    var relations = model.CompanyIds.Distinct().Select(c => new CompanyUserRelation() { Id = 0, CompanyId = c, UserId = user.Id });
+                    var existingRelations =  _compUserRelationRepo.Query.Where(c => c.UserId == user.Id);
+                    await _compUserRelationRepo.DeleteRangeAsync(existingRelations, cancellationToken, false);
+                    await _compUserRelationRepo.AddRangeAsync(relations, cancellationToken);
+
+                }
+
+                #endregion
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch (Exception)
+            {
+
+               await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
             return Ok();
         }
         [HttpPut("[action]")]
@@ -156,7 +231,7 @@ namespace IranSAS.Server.Controllers
             if (refreshToken == null || refreshToken.ExpireDate < DateTime.UtcNow)
                 return Unauthorized(MessagesDictionary.Messages["invalid refresh token"]);
 
-            var user = await _userRepository.GetByIdAsync(cancellationToken, refreshToken.UserId);
+            var user = await _userRepository.QueryNoTracking.Include(u => u.CompanyUserRelations).FirstOrDefaultAsync(u => u.Id == refreshToken.UserId, cancellationToken);
             if (user == null)
             {
                 return Unauthorized(MessagesDictionary.Messages["invalid refresh token"]);

@@ -6,18 +6,25 @@ using AgentsDataView.Entities.DtoModels;
 using AgentsDataView.Services;
 using AgentsDataView.WebFramework.Api;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 
 namespace AgentsDataView.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class CompaniesController(IRepository<Company> companyRepo, IRepository<FinancialPeriod> fpRepo, IInvoiceService invoiceService, IUserRepository userRepo) : ControllerBase
+    public class CompaniesController(IRepository<Company> companyRepo,
+                                     IRepository<FinancialPeriod> fpRepo,
+                                     IInvoiceService invoiceService,
+                                     IUserRepository userRepo,
+                                     IRepository<CompanyUserRelation> compUserRelationRepo
+                                     ) : ControllerBase
     {
         private readonly IRepository<Company> _companyRepo = companyRepo;
         private readonly IRepository<FinancialPeriod> _fpRepo = fpRepo;
         private readonly IUserRepository _userRepo = userRepo;
         private readonly IInvoiceService _invoiceService = invoiceService;
+        private readonly IRepository<CompanyUserRelation> _compUserRelationRepo = compUserRelationRepo;
 
         [HttpGet]
         public async Task<ActionResult<CompaniesDto>> Get(int id, CancellationToken cancellationToken)
@@ -68,7 +75,7 @@ namespace AgentsDataView.Server.Controllers
             var array = await _companyRepo.QueryNoTracking
                 .Include(c => c.Province)
                 .Include(c => c.City)
-                .OrderBy(c=>c.Code)
+                .OrderBy(c => c.Code)
                 .ToArrayAsync(cancellationToken)
                 .ConfigureAwait(false);
             var result = array.Select(comp => new CompaniesDto()
@@ -87,7 +94,7 @@ namespace AgentsDataView.Server.Controllers
             }).ToArray();
 
             var invDict = await _invoiceService.GetMaxInvoiceDates(cancellationToken);
-            foreach(var c in result)
+            foreach (var c in result)
             {
                 invDict.TryGetValue(c.Id.Value, out var inv);
                 c.MaxInvoiceCreationDate = inv.MaxCreationDate;
@@ -100,46 +107,45 @@ namespace AgentsDataView.Server.Controllers
         [HttpPost("[action]")]
         public async Task<ActionResult<CreateCompanyResult>> Create(CompaniesDto model, CancellationToken cancellationToken)
         {
-            string[] stringArray = [model.Name ,
-            model.Address ,
-            model.Code,
-            model.PhoneNumber,
-            model.PostalCode ,
-            model.RegistrationNumber ];
-            stringArray.CleanStrings();
+            model.Name = model.Name.CleanString2();
+            model.Address = model.Address.CleanString2();
+            model.Code = model.Code.CleanString2();
+            model.PhoneNumber = model.PhoneNumber.CleanString2();
+            model.PostalCode = model.PostalCode.CleanString2();
+            model.RegistrationNumber = model.RegistrationNumber.CleanString2();
 
             var existingComp = await _companyRepo.QueryNoTracking.FirstOrDefaultAsync(c =>
-            c.Name == stringArray[0] ||
-            stringArray[1] == c.Code ||
-            (!string.IsNullOrEmpty(stringArray[2]) && c.Address == stringArray[2]) ||
-            (!string.IsNullOrEmpty(stringArray[3]) && stringArray[3] == c.PostalCode) ||
-            (!string.IsNullOrEmpty(stringArray[4]) && stringArray[4] == c.PhoneNumber) ||
-            (!string.IsNullOrEmpty(stringArray[5]) && stringArray[5] == c.RegistrationNumber),
+            c.Name == model.Name ||
+            c.Code == model.Code ||
+            (!string.IsNullOrEmpty(model.Address) && c.Address == model.Address) ||
+            (!string.IsNullOrEmpty(model.PostalCode) && c.PostalCode == model.PostalCode) ||
+            (!string.IsNullOrEmpty(model.PhoneNumber) && c.PhoneNumber == model.PhoneNumber) ||
+            (!string.IsNullOrEmpty(model.RegistrationNumber) && c.RegistrationNumber == model.RegistrationNumber),
             cancellationToken
             ).ConfigureAwait(false);
             if (existingComp != null)
             {
-                if (stringArray[0] == existingComp.Name)
+                if (model.Name == existingComp.Name)
                 {
                     return BadRequest("شرکت دیگری با این نام ثبت شده است.");
                 }
-                if (stringArray[1] == existingComp.Address )
+                if (model.Address == existingComp.Address)
                 {
                     return BadRequest("شرکت دیگری با این کد ثبت شده است.");
                 }
-                if (stringArray[2] == existingComp.Code)
+                if (model.Code == existingComp.Code)
                 {
                     return BadRequest("شرکت دیگری با این نشانی ثبت شده است.");
                 }
-                if (stringArray[3] == existingComp.PostalCode)
+                if (model.PostalCode == existingComp.PostalCode)
                 {
                     return BadRequest("شرکت دیگری با این کد پستی ثبت شده است.");
                 }
-                if (stringArray[4] == existingComp.PhoneNumber)
+                if (model.PhoneNumber == existingComp.PhoneNumber)
                 {
                     return BadRequest("شرکت دیگری با این شماره تلفن ثبت شده است."); ;
                 }
-                if (stringArray[5] == existingComp.RegistrationNumber)
+                if (model.RegistrationNumber == existingComp.RegistrationNumber)
                 {
                     return BadRequest("شرکت دیگری با این کد پستی ثبت شده است.");
                 }
@@ -163,29 +169,31 @@ namespace AgentsDataView.Server.Controllers
             {
                 await _companyRepo.AddAsync(newComp, cancellationToken, true);
 
-                // 2️⃣ افزودن دوره مالی بدون SaveChangesAsync (saveNow = false)
-                var newFp = new FinancialPeriod
+                FinancialPeriod newFp = new()
                 {
-                    Id=0,
+                    Id = 0,
                     CompanyId = newComp.Id,
                     Title = $"دوره مالی شرکت {newComp.Name}",
                     StartDate = DateTimeOffset.UtcNow
                 };
                 await _fpRepo.AddAsync(newFp, cancellationToken, false);
 
-                // 3️⃣ افزودن کاربر شرکت و SaveChangesAsync همان لحظه (saveNow = true)
-                var compUser = new SystemUser
+
+                SystemUser compUser = new()
                 {
-                    Id=0,
-                    CompanyId = newComp.Id,
+                    Id = 0,
                     IsActive = true,
                     Password = "Comp_" + newComp.Id,
                     UserFullName = $"کاربر شرکت {newComp.Name}",
-                    UserName = "Comp_" + newComp.Id
+                    UserName = "Comp_" + newComp.Id,
+                    IsApiUser = true,
                 };
-                await _userRepo.AddAsync(compUser, cancellationToken); // اینجا SaveChangesAsync زده میشه
+                await _userRepo.AddAsync(compUser, cancellationToken);
 
-                // ✅ commit تراکنش
+                CompanyUserRelation relation = new() { Id = 0, CompanyId = newComp.Id, UserId = compUser.Id };
+                await _compUserRelationRepo.AddAsync(relation, cancellationToken);
+
+
                 await transaction.CommitAsync(cancellationToken);
 
                 return Ok(new CreateCompanyResult
@@ -197,7 +205,6 @@ namespace AgentsDataView.Server.Controllers
             }
             catch
             {
-                // rollback اگر خطایی رخ بده
                 await transaction.RollbackAsync(cancellationToken);
                 throw;
             }

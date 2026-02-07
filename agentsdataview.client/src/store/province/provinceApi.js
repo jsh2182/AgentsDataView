@@ -15,7 +15,7 @@ export const provincesApi = createApi({
     }),
     endpoints: (builder) => ({
         getAllProvinces: builder.query({
-            query: () => "/GetALL",
+            query: (filterOnUser) => `/GetALL?filterOnUser=${filterOnUser}`,
             keepUnusedDataFor: 60,
             transformErrorResponse: (response, meta, arg) => {
                 return getError(response);
@@ -26,4 +26,4 @@ export const provincesApi = createApi({
         
     })
 });
-export const { useGetAllProvincesQuery} = provincesApi;
+export const { useLazyGetAllProvincesQuery} = provincesApi;

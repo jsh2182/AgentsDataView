@@ -480,3 +480,30 @@ body {
     opacity: 1;
   }
 }
+.multi-select-item:hover {
+  color: blue;
+}
+.multi-select-item .auto-label{
+  margin-top: 0.40em;
+}
+.multi-select-item:hover .form-check-input {
+  border-color: rgb(78, 78, 172);
+}
+
+.multi-select-item:hover .form-check-input:checked {
+  background-color: rgb(78, 78, 172);
+}
+.sc-thin::-webkit-scrollbar {
+  width: 5px;
+  height: 12px;
+}
+
+.sc-thin::-webkit-scrollbar-track {
+  -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+}
+
+.sc-thin::-webkit-scrollbar-thumb {
+  background-color: #0096c7;
+  border-radius: 10px;
+}

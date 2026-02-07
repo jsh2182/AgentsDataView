@@ -19,3 +19,19 @@ export const getError = (response) => {
   }
   return message;
 }
+export function keyIsLetterOrNumber(key) {
+    //const key = event.key;
+    if (key === ' ') return true;
+    // اعداد انگلیسی
+    const isEnglishDigit = /^[0-9]$/.test(key);
+
+    // حروف انگلیسی (a-z یا A-Z)
+    const isEnglishLetter = /^[a-zA-Z]$/.test(key);
+
+    // حروف فارسی
+    const isPersianLetter = /^[\u0600-\u06FF]$/.test(key);
+
+    // اعداد فارسی (۰ تا ۹)
+    const isPersianDigit = /^[\u06F0-\u06F9]$/.test(key);
+    return isEnglishDigit || isEnglishLetter || isPersianLetter || isPersianDigit;
+}

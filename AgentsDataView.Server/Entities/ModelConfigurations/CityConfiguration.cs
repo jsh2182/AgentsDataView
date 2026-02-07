@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace AgentsDataView.Server.Entities.ModelConfigurations
+namespace AgentsDataView.Entities
 {
     public class CityConfiguration : IEntityTypeConfiguration<City>
     {

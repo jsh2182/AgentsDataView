@@ -28,15 +28,41 @@ namespace AgentsDataView.Common
             string? stringValue = claimsIdentity?.FindFirst(claimType)?.Value;
             return stringValue.HasValue() ? (T?)Convert.ChangeType(stringValue, typeof(T), CultureInfo.InvariantCulture) : default;
         }
+        /// <summary>
+        /// For Api Users
+        /// </summary>
         public static int GetCompanyId(this IIdentity identity)
         {
             ClaimsIdentity? claimIndentity = identity as ClaimsIdentity;
             string? value = claimIndentity?.FindFirstValue("C_Id");
+
             if(string.IsNullOrWhiteSpace(value))
             {
                 throw new Exception("شناسه ارتباطی شرکت معتبر نیست.");
             }
-            return value.ToInt();
+            // کاربر api باید تنها به یک شرکت متصل باشد پس ما هم اولین شرکت را به عنوان شرکتی که فاکتور و کالا ثبت می کند انتخاب می کنیم
+            int compId = (value.Split(',')[0]).ToInt();
+            return compId;
+        }
+        /// <summary>
+        /// For Panel Users
+        /// </summary>
+        public static int[] GetCompanyIds(this IIdentity identity)
+        {
+            ClaimsIdentity? claimIndentity = identity as ClaimsIdentity;
+            string userName = claimIndentity?.FindFirstValue(ClaimTypes.Name)??"";
+            if (userName.ToLower() == "super")
+            {
+                return [];
+            }
+            string? value = claimIndentity?.FindFirstValue("C_Id");
+
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                throw new Exception("شناسه ارتباطی شرکت معتبر نیست.");
+            }
+            var compIds = value.Split(',').Select(v=>v.ToInt()).ToArray();
+            return compIds;
         }
         public static string? GetUserId(this IIdentity identity)
         {

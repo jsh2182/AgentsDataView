@@ -1,5 +1,4 @@
-﻿using AgentsDataView.Server.Entities;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AgentsDataView.Entities

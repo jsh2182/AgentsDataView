@@ -10,18 +10,19 @@ import { BiCheck } from "react-icons/bi";
 import Alert from 'react-bootstrap/Alert';
 import { FaPersonCircleMinus } from "react-icons/fa6";
 import { useCreateCompanyMutation, useLazyGetAllCompaniesQuery, useUpdateCompanyMutation } from "../../store/company/companiesApi";
-import { useGetAllProvincesQuery } from "../../store/province/provinceApi";
+import { useLazyGetAllProvincesQuery } from "../../store/province/provinceApi";
 import { useLazyGetAllCitiesQuery } from "../../store/city/cityApi";
 import { MoonLoader } from "react-spinners";
 import { useLazyGetSettingQuery, useUpdateSettingMutation } from "../../store/setting/settingApi";
 import { FaCheck } from "react-icons/fa";
+import ModalAddEditUser from "../../components/Modals/ModalAddEditUser";
 
 const AdminPanel = () => {
     const dispatch = useDispatch();
-    const { data: provinceList, isLoading: loadingProvinceList } = useGetAllProvincesQuery();
+    const [getProvinceList, { data: provinceList, isFetching: loadingProvinceList }] = useLazyGetAllProvincesQuery();
     const [getCityList, { data: cityList, isFetching: loadingCityList }] = useLazyGetAllCitiesQuery();
     const [getUserList, { data: userList, isFetching: loadingUserList, error }] = useLazyFetchUserListQuery();
-    const [createUser, { isLoading: createLoading, error: createError }] = useCreateUserMutation();
+
     const [deleteUser, { isLoading: deleteLoading, error: deleteError }] = useDeleteUserMutation();
     const [updateCompany, { isLoading: loadingUpdateComp, error: errorUpdateCompany, reset: resetUpdateCompany }] = useUpdateCompanyMutation();
     const [createCompany, { isLoading: loadingCreateCompany, error: errorCreateCompany, reset: resetCreateCompany }] = useCreateCompanyMutation();
@@ -31,10 +32,10 @@ const AdminPanel = () => {
     const advLink = useRef(settings?.settingValue ?? "");
     const currentUser = useSelector((state) => state.user.currentUser);
     const selectedUser = useRef();
-    const [showNewUser, setShowNewUser] = useState(false);
+
     const [showModalDelete, setShowModalDelete] = useState(false);
-    const [companyInfo, setCompanyInfo] = useState(null);
     const [showModalCompany, setShowModalCompany] = useState(false);
+    const [modalUserData, setModalUserData] = useState({ show: false });
     const columns = [
         { colTitle: "ردیف", colName: "RowNumber" },
         { colTitle: "نام کامل", colName: "userFullName", },
@@ -54,18 +55,11 @@ const AdminPanel = () => {
         { colTitle: "شماره تماس", colName: "phoneNumber" },
         { colTitle: "استان", colName: "provinceName" },
         { colTitle: "شهر", colName: "cityName" },
-        { colTitle: "نشانی", colName: "address", colType:"string" },
+        { colTitle: "نشانی", colName: "address", colType: "string" },
         { colTitle: "تاریخ آخرین ارسال", colName: "pMaxInvoiceCreationDate" },
         { colTitle: "آخرین تاریخ فاکتور", colName: "pMaxInvoiceDate" }
     ]
-    const showCompany = (row) => {
-        //setCompanyInfo({ ...row, e: undefined });
-        reset({ ...row, e: undefined });
-        if (Number(row.provinceId) > 0)
-            getCityList(row.provinceId);
-        setShowModalCompany(true);
-    }
-    const companyButtons = [{ type: "show", onclick: showCompany }]
+
     const {
         register,
         handleSubmit,
@@ -81,62 +75,7 @@ const AdminPanel = () => {
     }
 
 
-    const ModalNewUser = () => {
-        const onSubmitUserData = async (data) => {
-            data.companyId = companyInfo.id;
-            data.password = data.userMobile;
-            await createUser(data).unwrap();
-            reset();
-            setShowNewUser(false);
-        }
-        return (
-            <Modal show={showNewUser && !showModalCompany} variant="" animation={true} onHide={() => setShowNewUser(false)} backdrop={false}>
-                <Modal.Header className="header-style" closeButton >
-                    <span>
-                        <BsPersonPlus size={25} />&nbsp; کاربر جدید
-                    </span>
-                    {/* <FiX size={25} onClick={() => setShowNewUser(false)} /> */}
-                </Modal.Header>
-                <Modal.Body>
-                    {createError && <Alert variant="danger">{createError}</Alert>}
-                    {showNewUser && !showModalCompany &&
-                        <form onSubmit={handleSubmit(onSubmitUserData)} className="vstack gap-3 "
-                        >
-                            <FormGroup>
-                                <Form.Control
-                                    name="userName"
-                                    type="text"
-                                    placeholder="نام کاربری"
-                                    {...register("userName", { required: "نام کاربری الزامی است" })}
-                                />
-                                {errors?.userName && <small className="text-danger">{errors.userName.message}</small>}
-                            </FormGroup>
-                            <FormGroup>
-                                <Form.Control
-                                    name="userFullName"
-                                    type="text"
-                                    placeholder="نام کامل"
-                                    {...register("userFullName", { required: "نام کامل الزامی است" })}
-                                />
-                                {errors?.userFullName && <small className="text-danger">{errors.userFullName?.message}</small>}
-                            </FormGroup>
-                            <FormGroup>
-                                <Form.Control
-                                    name="userMobile"
-                                    type="number"
-                                    placeholder="شماره همراه"
-                                    {...register("userMobile", { required: "شماره همراه الزامی است" })}
-                                />
-                                {errors?.userMobile && <small className="text-danger">{errors.userMobile?.message}</small>}
-                            </FormGroup>
-                            <Button variant="success" type="submit" disabled={createLoading}><BiCheck size={18} />&nbsp;ثبت اطلاعات</Button>
-                        </form>
-                    }
-                </Modal.Body>
-                <Modal.Footer style={{ padding: 0 }}></Modal.Footer>
-            </Modal>
-        )
-    }
+
     const ModalCompanyInfo = () => {
         const handleSubmitCompany = async (data) => {
             if (Number(data.id) > 0) {
@@ -153,7 +92,7 @@ const AdminPanel = () => {
             setShowModalCompany(false);
         }
         return (
-            <Modal show={showModalCompany && !showNewUser} variant="" animation={!showModalCompany || showNewUser} onHide={() => setShowModalCompany(false)} backdrop={false}>
+            <Modal show={showModalCompany} variant="" animation={!showModalCompany} onHide={() => setShowModalCompany(false)} backdrop={false}>
                 <Modal.Header className="header-style" closeButton >
                     <span>
                         <BsBuilding size={25} />&nbsp; اطلاعات شرکت
@@ -162,7 +101,7 @@ const AdminPanel = () => {
                 </Modal.Header>
                 <Modal.Body>
                     {(errorUpdateCompany || errorCreateCompany) && <Alert variant="danger">{errorUpdateCompany || errorCreateCompany}</Alert>}
-                    {showModalCompany && !showNewUser &&
+                    {showModalCompany &&
                         <form onSubmit={handleSubmit(handleSubmitCompany)} className="vstack gap-3 "
                         >
                             <input type="hidden" /*defaultValue={companyInfo?.id ?? 0}*/ {...register("id")} />
@@ -280,8 +219,10 @@ const AdminPanel = () => {
             </Modal>)
     }
     const companyRowClick = (row) => {
-        setCompanyInfo({ ...row });
-        getUserList(row.id);
+        reset({ ...row, e: undefined });
+        if (Number(row.provinceId) > 0)
+            getCityList(row.provinceId);
+        setShowModalCompany(true);
     }
     const handleLogout = () => {
         dispatch(logout());
@@ -289,54 +230,75 @@ const AdminPanel = () => {
     const handleSubmitSettings = () => {
         updateSetting({ settingName: "AdvertisingLink", settingValue: advLink.current });
     }
-    useEffect(() => {
-        if (currentUser) {
-            getCompanyList();
-            getSetting("AdvertisingLink");
-        }
-    }, [currentUser])
-    return (
-        <div className="p-4 border rounded m-2">
-            <ModalNewUser />
-            <ModalCompanyInfo />
-            <ModalConfirmDelete />
-            <div style={{ position: "relative" }}>
-                <h2 className="text-lg font-bold mb-2" style={{ borderBottom: "1px solid #a8b3f5", paddingBottom: "0.3em" }}>پنل مدیریت</h2>
-                <Button variant="outline-danger tooltip-container" style={{ position: "absolute", top: 0, left: 0, border: "none" }} onClick={handleLogout}>
-                    <BsBoxArrowRight size={25} />
-                    <span className="tooltip-text">خروج</span>
-                </Button></div>
-            <Row className="g-1">
-                <Col md={companyInfo ? 7 : 12} className="rounded" style={{ border: "1px solid gray" }}>
-                    <label className="w-100 p-1 mb-1" style={{ borderBottom: "1px solid gray" }}>فهرست شرکت ها</label>
-                    <div className="text-end">
-                        <Button variant="link" onClick={prepareForAddComp} className="p-0">
-                            <BsPlusSquareFill size={28} />
-                        </Button>
-                    </div>
-                    <BihamtaTable columns={companyColumns} dataList={loadingCompanyList ? "PENDING" : { data: companyList }} rowButtons={companyButtons} maxHeight={500} rowClick={companyRowClick} searchable />
-                </Col>
-                {companyInfo &&
-                    <Col md={5} className="rounded" style={{ border: "1px solid gray" }}>
-                        <label className="w-100 p-1 mb-1" style={{ borderBottom: "1px solid gray" }}>فهرست کاربران {companyInfo.name}</label>
-                        <div className="text-end">
-                            <Button variant="link" onClick={() => setShowNewUser(true)} className="p-0">
-                                <BsPlusSquareFill size={28} />
-                            </Button>
-                        </div>
-                        <BihamtaTable columns={columns} dataList={loadingUserList ? "PENDING" : { data: userList }} rowButtons={buttons} maxHeight={500} searchable />
-                    </Col>
-                }
-            </Row>
-            <Row className="border mt-2">
-                <Col md={12}>
-                    <label>لینک تبلیغات:</label>
-                    <FormControl defaultValue={settings?.settingValue} onChange={e => advLink.current = e.target.value} style={{ direction: "ltr", textAlign: "center" }} />
-                    <Button className="mt-1 mb-1" variant="success" onClick={handleSubmitSettings} disabled={loadingUpdateSetting}><FaCheck size={18} />&nbsp; ثبت اطلاعات</Button>
-                </Col>
-            </Row>
-        </div>
-    );
+    const showModalUser = () => {
+        setModalUserData({ show: true });
+    }
+    const onUserRowClick = (row) => {
+        const userInfo = { ...row, e: undefined, target: undefined };
+        
+        const orderedCompanyList = [...companyList].sort((a, b) => {
+            const nameA = a.name.toUpperCase();
+            const nameB = b.name.toUpperCase();
+            if (nameA < nameB) {
+                return -1;
+            }
+            if (nameA > nameB) {
+                return 1;
+            }
+
+            return 0;
+        });
+
+    setModalUserData({ show: true, userInfo: userInfo, companyList: orderedCompanyList });
+}
+useEffect(() => {
+    if (currentUser) {
+        getCompanyList();
+        getProvinceList(false);
+        getUserList();
+        getSetting("AdvertisingLink");
+
+    }
+}, [currentUser])
+return (
+    <div className="p-4 border rounded m-2">
+        <ModalAddEditUser modalData={modalUserData} setModalData={setModalUserData} provinceList={provinceList} companyList={companyList}/>
+        <ModalCompanyInfo />
+        <ModalConfirmDelete />
+        <div style={{ position: "relative" }}>
+            <h2 className="text-lg font-bold mb-2" style={{ borderBottom: "1px solid #a8b3f5", paddingBottom: "0.3em" }}>پنل مدیریت</h2>
+            <Button variant="outline-danger tooltip-container" style={{ position: "absolute", top: 0, left: 0, border: "none" }} onClick={handleLogout}>
+                <BsBoxArrowRight size={25} />
+                <span className="tooltip-text">خروج</span>
+            </Button></div>
+        <Row className="rounded" style={{ border: "1px solid gray" }}>
+            <label className="w-100 p-1 mb-1" style={{ borderBottom: "1px solid gray" }}>فهرست شرکت ها</label>
+            <div className="text-end">
+                <Button variant="link" onClick={prepareForAddComp} className="p-0">
+                    <BsPlusSquareFill size={28} />
+                </Button>
+            </div>
+            <BihamtaTable columns={companyColumns} dataList={loadingCompanyList ? "PENDING" : { data: companyList }} maxHeight={500} rowClick={companyRowClick} searchable />
+
+        </Row>
+        <Row className="rounded mt-2" style={{ border: "1px solid gray" }}>
+            <label className="w-100 p-1 mb-1" style={{ borderBottom: "1px solid gray" }}>فهرست کاربران</label>
+            <div className="text-end">
+                <Button variant="link" onClick={showModalUser} className="p-0">
+                    <BsPlusSquareFill size={28} />
+                </Button>
+            </div>
+            <BihamtaTable columns={columns} dataList={loadingUserList ? "PENDING" : { data: userList }} rowButtons={buttons} maxHeight={500} searchable rowClick={onUserRowClick} />
+        </Row>
+        <Row className="border mt-2">
+            <Col md={12}>
+                <label>لینک تبلیغات:</label>
+                <FormControl defaultValue={settings?.settingValue} onChange={e => advLink.current = e.target.value} style={{ direction: "ltr", textAlign: "center" }} />
+                <Button className="mt-1 mb-1" variant="success" onClick={handleSubmitSettings} disabled={loadingUpdateSetting}><FaCheck size={18} />&nbsp; ثبت اطلاعات</Button>
+            </Col>
+        </Row>
+    </div>
+);
 };
 
 export default AdminPanel;

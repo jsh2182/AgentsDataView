@@ -59,7 +59,7 @@ export const userApi = createApi({
       },
     }),
     fetchUserList: builder.query({
-      query: (companyId) => `/GetAll?companyId=${companyId}`,
+      query: (companyId) => `/GetAll?companyId=${companyId ?? ""}`,
       providesTags: ["UserList"],
       keepUnusedDataFor: 0,
       refetchOnMountOrArgChange: true,
@@ -95,13 +95,32 @@ export const userApi = createApi({
         method: "PUT",
         body: data
       }),
+
       transformErrorResponse: (response, meta, arg) => {
         return getError(response);
       },
     }),
+    updateUser: builder.mutation({
+      query: (data) => ({
+        url: `/Update`,
+        method: "PUT",
+        body: data
+      }),
+      transformErrorResponse: (response, meta, arg) => {
+        return getError(response);
+      },
+      invalidatesTags: ["UserList"]
+    }),
   }),
 });
 
-export const { useLoginUserMutation, useFetchProfileQuery, useLazyFetchUserListQuery, useCreateUserMutation, useDeleteUserMutation, useUpdateMeMutation } = userApi;
+export const {
+  useLoginUserMutation,
+  useFetchProfileQuery,
+  useLazyFetchUserListQuery,
+  useCreateUserMutation,
+  useDeleteUserMutation,
+  useUpdateMeMutation,
+  useUpdateUserMutation } = userApi;
 
 

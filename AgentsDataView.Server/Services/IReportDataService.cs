@@ -5,10 +5,10 @@ namespace AgentsDataView.Services
 {
     public interface IReportDataService
     {
-        Task<ReportResultDto[]> GetProfitReportByCompany(int? provinceId, CancellationToken cancellationToken);
-        Task<ReportResultDto[]> GetProfitReportByProvince(CancellationToken cancellationToken);
-        Task<IEnumerable> GetReportByCompanyAndProduct(int? provinceId, CancellationToken cancellationToken);
-        Task<ReportResultDto[]> GetReportByProvince(int? provinceId, CancellationToken cancellationToken);
-        Task<IEnumerable> GetReportByProvince_Cumulative(CancellationToken cancellationToken);
+        Task<ReportResultDto[]> GetProfitReportByCompany(int[]? provinceIds, CancellationToken cancellationToken);
+        Task<ReportResultDto[]> GetProfitReportByProvince(int[]? provinceIds,CancellationToken cancellationToken);
+        Task<IEnumerable> GetReportByCompanyAndProduct(int[]? provinceIds, CancellationToken cancellationToken);
+        Task<ReportResultDto[]> GetReportByProvince(int[]? provinceIds, CancellationToken cancellationToken);
+        Task<IEnumerable> GetReportByProvince_Cumulative(int[]? provinceIds,CancellationToken cancellationToken);
     }
 }

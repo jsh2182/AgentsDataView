@@ -73,7 +73,8 @@ namespace AgentsDataView.Data.Repositories
         {
             string passwordHash = SecurityHelper.GetSha256Hash(password);
             username = username.FixPersianChars().ToLower();
-            var user = await QueryNoTracking.FirstOrDefaultAsync(u => (u.UserName == username || u.UserMobile == username) && u.Password == passwordHash, cancellationToken);
+            var user = await QueryNoTracking.Include(u=>u.CompanyUserRelations)
+                .FirstOrDefaultAsync(u => (u.UserName == username || u.UserMobile == username) && u.Password == passwordHash, cancellationToken);
             return user;
         }
 

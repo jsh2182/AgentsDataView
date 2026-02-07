@@ -5,7 +5,6 @@ namespace AgentsDataView.Entities
     public class SystemUser : BaseEntity<int>
     {
         
-        public int? CompanyId { get; set; }
         [Required(AllowEmptyStrings =false, ErrorMessage ="نام کاربری الزامی است")]
         public string UserName { get; set; } = "";
         public string? Password { get; set; }
@@ -17,6 +16,10 @@ namespace AgentsDataView.Entities
         public string? LoginInfo { get; set; }
         public long? OrganizationRoleID { get; set; }
         public DateTimeOffset? LastLoginDate { get; set; }
+        /// <summary>
+        /// برای کاربرانی که هنگام ساخت شرکت، ساخته می شوند. این کاربران در فهرست کاربران پنل نمایش داده نخواهند شد
+        /// </summary>
+        public bool IsApiUser { get; set; }
 
         public virtual Company? Company { get; set; }
         public virtual ICollection<Product>? Products { get; set; }
@@ -24,6 +27,7 @@ namespace AgentsDataView.Entities
         public virtual ICollection<Invoice>? Invoices_UpdatedBy { get; set; }
         public virtual ICollection<RefreshToken>? RefreshTokens { get; set; }
         public virtual ICollection<UserRole>? UserRoles { get; set; }
+        public virtual ICollection<CompanyUserRelation>? CompanyUserRelations { get; set; }
 
     }
 }

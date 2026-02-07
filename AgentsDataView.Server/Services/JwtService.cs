@@ -49,13 +49,18 @@ namespace AgentsDataView.Services
         private IEnumerable<Claim> _getClaims(SystemUser user)
         {
 
+            string cIds = "";
+            if (user.CompanyUserRelations != null && user.CompanyUserRelations.Count > 0) {
+
+                cIds = string.Join(',', user.CompanyUserRelations.Select(c => c.CompanyId));
+                    }
             var list = new List<Claim>
             {
                 new(ClaimTypes.Name, user.UserName),
                 new (ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new ("U_FullName", user.UserFullName),
                 new ("U_Mobile", user.UserMobile??""),
-                new ("C_Id", (user.CompanyId??0).ToString())
+                new ("C_Id", cIds)
 
             };
 
