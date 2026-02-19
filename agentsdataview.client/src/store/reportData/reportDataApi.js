@@ -62,7 +62,7 @@ export const reportsApi = createApi({
     })
 });
 export const { useLazyGetProfitReportByCompanyQuery, 
-    useGetProfitReportByProvinceQuery,
+    useLazyGetProfitReportByProvinceQuery,
      useLazyGetReportByCompanyAndProductQuery, 
      useLazyGetReportByProvinceQuery, 
      useGetReportByProvince_CumulativeQuery } = reportsApi;

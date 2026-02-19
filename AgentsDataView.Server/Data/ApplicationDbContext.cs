@@ -11,11 +11,11 @@ namespace AgentsDataView.Data
         {
             base.OnModelCreating(modelBuilder);
             var assembly = typeof(IEntity).Assembly;
-            modelBuilder.RegisterAllEntities<IEntity>(assembly);
+           // modelBuilder.RegisterAllEntities<IEntity>(assembly);
             var types = modelBuilder.Model.GetEntityTypes().Select(t => t.ClrType).ToHashSet();
-            modelBuilder.ApplyConfigurationsFromAssembly(assembly, t => t.GetInterfaces().Any(i => i.IsGenericType &&
+            modelBuilder.ApplyConfigurationsFromAssembly(assembly/*, t => t.GetInterfaces().Any(i => i.IsGenericType &&
                                                                                             i.GetGenericTypeDefinition() == typeof(IEntityTypeConfiguration<>) &&
-                                                                                            types.Contains(i.GenericTypeArguments[0])));
+                                                                                            types.Contains(i.GenericTypeArguments[0]))*/);
             //modelBuilder.AddRestrictDeleteBehaviorConvention();
         }
         public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)

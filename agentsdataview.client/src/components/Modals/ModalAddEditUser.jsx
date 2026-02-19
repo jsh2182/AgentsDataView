@@ -51,13 +51,13 @@ export default function ModalAddEditUser({ modalData, setModalData, companyList,
         const splited = item.value.split(",");
         splited.forEach(p => {
             if (item.checked) {
-                if (!selectedCompanies.current.includes(p)) {
+                if (!selectedCompanies.current.some(c=>c.toString() === p)) {
 
                     selectedCompanies.current.push(p);
                 }
             }
             else {
-                selectedCompanies.current = selectedCompanies.current.filter(a => a !== p);
+                selectedCompanies.current = selectedCompanies.current.filter(a => a.toString() !== p);
 
             }
         });

@@ -7,6 +7,7 @@ import { useUpdateMeMutation } from "../store/user/userAPI";
 import {
   useGetProfitReportByProvinceQuery,
   useLazyGetProfitReportByCompanyQuery,
+  useLazyGetProfitReportByProvinceQuery,
   useLazyGetReportByCompanyAndProductQuery,
   useLazyGetReportByProvinceQuery
 } from "../store/reportData/reportDataApi";
@@ -34,11 +35,11 @@ export default function Home() {
   const [provinceForProvinceOnProvince, setProvinceForReportOnProvince] = useState(null);
   const [updateMe, { isLoading: loadingUpdateMe, error: errorUpdateMe }] = useUpdateMeMutation();
   const [getProfitReportByCompany, { data: profitReportByCompany, isFetching: profitReportByCompanyLoading, error: profitReportByCompanyError }] = useLazyGetProfitReportByCompanyQuery();
-  const { data: profitReportByProvince, isFetching: profitReportByProvinceLoading, error: profitReportByProvinceError, refetch: refetchProfitReportByProvince } = useGetProfitReportByProvinceQuery();
+  const [getProfitReportByProvince, { data: profitReportByProvince, isFetching: profitReportByProvinceLoading, error: profitReportByProvinceError, refetch: refetchProfitReportByProvince }] = useLazyGetProfitReportByProvinceQuery();
   const [getReportByCompanyAndProduct, { data: reportByCompanyAndProduct, isFetching: reportByCompanyAndProductLoading, error: reportByCompanyAndProductError }] = useLazyGetReportByCompanyAndProductQuery();
   const [getRepotByProvince, { data: reportByProvince, isFetching: reportByProvinceQueryLoading, error: reportByProvinceError }] = useLazyGetReportByProvinceQuery();
   // const { data: reportByProvince_Cumulative, isLoading: reportByProvince_CumulativeLoading, error: reportByProvince_CumulativeError } = useGetReportByProvince_CumulativeQuery();
-  const [getProvinceList,{ data: provinceList, isLoading: loadingProvinceList }] = useLazyGetAllProvincesQuery();
+  const [getProvinceList, { data: provinceList, isLoading: loadingProvinceList }] = useLazyGetAllProvincesQuery();
   const { register, handleSubmit, formState: { errors } } = useForm();
   const [hiddenLabel, setHiddenLabel] = useState(null);
   const isMobile = useIsMobile();
@@ -179,9 +180,12 @@ export default function Home() {
     scrollContainer.addEventListener("scroll", handleScroll);
     return () => scrollContainer.removeEventListener("scroll", handleScroll);
   }, [reportByCompanyAndProduct]);
-  useEffect(()=>{
-    getProvinceList(true);
-  },[])
+  useEffect(() => {
+    if (user) {
+      getProfitReportByProvince();
+      getProvinceList(true);
+    }
+  }, [user])
   return (
     user &&
     <div className="p-1 border rounded m-2">
